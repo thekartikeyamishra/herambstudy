@@ -1,0 +1,27 @@
+{
+  "name": "heramb-launch-video",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Heramb.study launch video (Remotion). Isolated from the website build.",
+  "scripts": {
+    "studio": "remotion studio src/index.ts",
+    "typecheck": "tsc --noEmit",
+    "render": "remotion render src/index.ts LaunchVideo out/heramb-launch-16x9.mp4",
+    "render:vertical": "remotion render src/index.ts LaunchVideoVertical out/heramb-launch-9x16.mp4",
+    "render:square": "remotion render src/index.ts LaunchVideoSquare out/heramb-launch-1x1.mp4",
+    "render:with-voiceover": "remotion render src/index.ts LaunchVideo out/heramb-launch-16x9-vo.mp4 --props=\"{\\\"withAudio\\\":true}\"",
+    "still": "remotion still src/index.ts LaunchVideo out/poster.png --frame=900",
+    "render:all": "npm run render && npm run render:vertical && npm run render:square"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.535",
+    "@remotion/fonts": "4.0.535",
+    "react": "19.1.9",
+    "react-dom": "19.1.9",
+    "remotion": "4.0.535"
+  },
+  "devDependencies": {
+    "@types/react": "19.1.17",
+    "typescript": "5.9.3"
+  }
+}

@@ -1,0 +1,38 @@
+# Firebase App Hosting configuration (alternative to Vercel).
+# Docs: https://firebase.google.com/docs/app-hosting
+# Secrets are referenced from Cloud Secret Manager — never inline them here.
+runConfig:
+  minInstances: 0
+  maxInstances: 4
+  concurrency: 80
+  cpu: 1
+  memoryMiB: 512
+
+env:
+  - variable: NEXT_PUBLIC_SITE_URL
+    value: https://heramb.study
+    availability: [BUILD, RUNTIME]
+  - variable: NEXT_PUBLIC_BRAND_NAME
+    value: Heramb.study
+    availability: [BUILD, RUNTIME]
+  # App Hosting runs with a service account, so Application Default Credentials work.
+  - variable: FIREBASE_USE_ADC
+    value: "true"
+    availability: [RUNTIME]
+  # Google's load balancer appends to X-Forwarded-For; read the correct hop.
+  - variable: CLIENT_IP_MODE
+    value: gcp
+    availability: [RUNTIME]
+  - variable: RATE_LIMIT_SALT
+    secret: rateLimitSalt
+    availability: [RUNTIME]
+  # Optional email (create these secrets only if you enable email):
+  # - variable: RESEND_API_KEY
+  #   secret: resendApiKey
+  #   availability: [RUNTIME]
+  # - variable: EMAIL_TOKEN_SECRET
+  #   secret: emailTokenSecret
+  #   availability: [RUNTIME]
+  - variable: NEXT_PUBLIC_ADSENSE_ENABLED
+    value: "false"
+    availability: [BUILD, RUNTIME]

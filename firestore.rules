@@ -1,0 +1,36 @@
+rules_version = '2';
+
+// Heramb.study launch site — Firestore security rules.
+//
+// All writes happen on the server through the Firebase Admin SDK, which bypasses
+// these rules. Browsers therefore get NO direct access to any collection:
+//  - no collection-wide reads of invite requests, emails or statuses,
+//  - no client-side writes that could skip server validation or rate limits.
+//
+// When the authenticated learning app is built, add narrowly scoped rules for its
+// own collections (e.g. users/{uid}) — never loosen the ones below.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /inviteRequests/{requestId} {
+      allow read, write: if false;
+    }
+
+    match /contactMessages/{messageId} {
+      allow read, write: if false;
+    }
+
+    match /pilotApplications/{applicationId} {
+      allow read, write: if false;
+    }
+
+    match /rateLimits/{key} {
+      allow read, write: if false;
+    }
+
+    // Default deny for everything else.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

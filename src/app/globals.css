@@ -1,0 +1,159 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Design tokens ────────────────────────────────────────────────────────
+   Colour values are space-separated RGB so Tailwind opacity modifiers work.
+   Contrast (WCAG 2.2): ink on paper ≈ 15.9:1, ink-soft ≈ 9.6:1,
+   ink-muted ≈ 5.3:1, brand on paper ≈ 6.9:1, white on brand ≈ 7.3:1. */
+:root {
+  --ink: 14 21 40;            /* #0E1528 deep navy */
+  --ink-soft: 47 56 82;       /* #2F3852 */
+  --ink-muted: 88 96 118;     /* #586076 */
+  --paper: 250 248 244;       /* #FAF8F4 warm off-white */
+  --paper-raised: 255 255 255;
+  --paper-sunk: 243 240 233;  /* #F3F0E9 */
+  --line: 228 223 212;        /* #E4DFD4 */
+  --line-strong: 200 193 178;
+  --brand: 74 60 206;         /* #4A3CCE restrained violet */
+  --brand-strong: 56 43 176;  /* #382BB0 pressed */
+  --brand-tint: 237 235 252;  /* #EDEBFC */
+  --night: 12 17 33;          /* #0C1121 dark sections */
+  --night-raised: 24 31 54;
+  --good: 13 122 104;         /* #0D7A68 teal — positive status only */
+  --good-tint: 223 243 238;
+  --warn: 161 84 6;           /* #A15406 */
+  --warn-tint: 252 239 220;
+  --gap: 180 35 64;           /* #B42340 */
+  --gap-tint: 251 232 236;
+
+  --space-section: clamp(4rem, 3rem + 5vw, 7.5rem);
+  color-scheme: light;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    scroll-padding-top: 5rem;
+  }
+  body {
+    @apply bg-paper font-sans text-ink antialiased;
+    font-feature-settings: "cv11", "ss01";
+    text-rendering: optimizeLegibility;
+  }
+  h1, h2, h3, h4 {
+    @apply text-balance font-display font-medium text-ink;
+    font-optical-sizing: auto;
+  }
+  p { @apply text-pretty; }
+  ::selection { background: rgb(var(--brand) / 0.18); }
+
+  /* One consistent, highly visible focus ring for every interactive element. */
+  :focus-visible {
+    outline: 2px solid rgb(var(--brand));
+    outline-offset: 3px;
+    border-radius: 6px;
+  }
+  .on-night :focus-visible { outline-color: rgb(255 255 255); }
+
+  [hidden] { display: none !important; }
+}
+
+@layer components {
+  .section { padding-block: var(--space-section); }
+  .eyebrow {
+    @apply text-xs font-semibold uppercase tracking-[0.14em] text-brand;
+  }
+  .lede { @apply text-lg leading-relaxed text-ink-soft sm:text-xl; }
+  .card {
+    @apply rounded-card border border-line bg-paper-raised shadow-card;
+  }
+  .prose-heramb { @apply max-w-prose text-[1.0625rem] leading-[1.75] text-ink-soft; }
+  /* Direct-child selectors only, so embedded interactive tools keep their own styling. */
+  .prose-heramb > h2 { @apply mb-4 mt-12 text-display-md; }
+  .prose-heramb > h3 { @apply mb-3 mt-8 font-sans text-xl font-semibold tracking-tight; }
+  .prose-heramb > p { @apply my-4; }
+  .prose-heramb > ul { @apply my-4 list-disc space-y-2 pl-6; }
+  .prose-heramb > ol { @apply my-4 list-decimal space-y-2 pl-6; }
+  .prose-heramb > p a, .prose-heramb > ul a, .prose-heramb > ol a, .prose-heramb > table a {
+    @apply font-medium text-brand underline decoration-brand/30 underline-offset-4 hover:decoration-brand;
+  }
+  .prose-heramb > p strong, .prose-heramb > ul strong, .prose-heramb > ol strong, .prose-heramb > table strong { @apply font-semibold text-ink; }
+  .prose-heramb > table { @apply my-6 block w-full overflow-x-auto border-collapse text-left text-sm sm:table; }
+  .prose-heramb > table th { @apply border-b-2 border-line-strong px-3 py-2 font-semibold text-ink; }
+  .prose-heramb > table td { @apply border-b border-line px-3 py-2 align-top; }
+  .prose-heramb > blockquote { @apply my-6 border-l-4 border-brand/40 bg-brand-tint/40 px-5 py-3 text-ink; }
+
+  .field-label { @apply mb-1.5 block text-sm font-medium text-ink; }
+  .field-input {
+    @apply block w-full rounded-control border border-line-strong bg-paper-raised px-3.5 py-2.5 text-base text-ink
+      placeholder:text-ink-muted/80 transition-colors duration-150
+      hover:border-ink-muted focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/25
+      disabled:cursor-not-allowed disabled:bg-paper-sunk disabled:text-ink-muted
+      aria-[invalid=true]:border-gap aria-[invalid=true]:ring-gap/20;
+  }
+  select.field-input {
+    @apply appearance-none pr-10;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none'%3E%3Cpath d='m2.5 4.5 3.5 3.5 3.5-3.5' stroke='%23586076' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-position: right 0.9rem center;
+    background-repeat: no-repeat;
+  }
+  .field-hint { @apply mt-1.5 text-sm text-ink-muted; }
+  .field-error { @apply mt-1.5 text-sm font-medium text-gap; }
+}
+
+@layer utilities {
+  .bg-grid {
+    background-image:
+      linear-gradient(rgb(var(--ink) / 0.045) 1px, transparent 1px),
+      linear-gradient(90deg, rgb(var(--ink) / 0.045) 1px, transparent 1px);
+    background-size: 32px 32px;
+  }
+  .tabular { font-variant-numeric: tabular-nums; }
+}
+
+/* ─── Motion ────────────────────────────────────────────────────────────── */
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes grow-x {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+@keyframes draw-line {
+  from { stroke-dashoffset: var(--dash, 400); }
+  to { stroke-dashoffset: 0; }
+}
+.animate-rise { animation: rise-in 0.7s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.animate-grow-x { transform-origin: left; animation: grow-x 1s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.animate-draw { stroke-dasharray: var(--dash, 400); animation: draw-line 1.6s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ─── Print (progress-report template) ──────────────────────────────────── */
+@media print {
+  body { background: white; }
+  .no-print, header[role="banner"], footer[role="contentinfo"] { display: none !important; }
+  .print-only { display: block !important; }
+  .card { box-shadow: none; border-color: #ccc; }
+  @page { margin: 14mm; }
+}
+.print-only { display: none; }
+
+/* Bulk student reports from the class analyser: hidden on screen, printed alone. */
+.student-reports { display: none; }
+@media print {
+  body.print-reports > *:not(.student-reports) { display: none !important; }
+  body.print-reports .student-reports { display: block; color: #0E1528; font-family: var(--font-sans), sans-serif; }
+  body.print-reports .student-report { break-after: page; page-break-after: always; }
+  body.print-reports .student-report:last-child { break-after: auto; page-break-after: auto; }
+}

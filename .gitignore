@@ -1,0 +1,42 @@
+# dependencies
+node_modules/
+video/node_modules/
+
+# next
+.next/
+out/
+next-env.d.ts
+*.tsbuildinfo
+
+# env — never commit populated env files
+.env
+.env.*
+!.env.example
+
+# firebase
+.firebase/
+firebase-debug.log*
+firestore-debug.log*
+ui-debug.log*
+service-account*.json
+*-firebase-adminsdk-*.json
+
+# tests
+coverage/
+playwright-report/
+test-results/
+blob-report/
+
+# video renders
+video/out/
+
+# exports created by scripts/waitlist-admin.mjs (contain personal data)
+exports/
+
+# os / editor
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+npm-debug.log*
