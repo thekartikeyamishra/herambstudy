@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/Button";
 import { Badge, FictionalDataLabel } from "@/components/ui/Primitives";
 import {
   buildDataset,
+  checkTextSize,
   compareClasses,
   comparisonToCsv,
   LIMITS,
@@ -34,7 +35,8 @@ export function ClassFollowUp({ first, firstIsSample }: { first: Dataset; firstI
   const ref = useRef<HTMLDivElement>(null);
 
   function run(source = text) {
-    const { dataset, issues: found } = buildDataset(parseTable(source));
+    const tooBig = checkTextSize(source);
+    const { dataset, issues: found } = tooBig ? { dataset: null, issues: [{ row: 1, message: tooBig }] } : buildDataset(parseTable(source));
     setIssues(found);
     if (!dataset) return setResult(null);
     const c = compareClasses(first, dataset, Number(margin));

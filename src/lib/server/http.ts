@@ -123,8 +123,12 @@ export async function readJsonBody(req: Request): Promise<BodyResult> {
 /** Minimum time between first render and submit; filters naive bots. */
 export const MIN_FILL_MS = 2500;
 
+/**
+ * True when the form was submitted implausibly fast, or the timing field is missing
+ * (every genuine form on this site sends it; omitting it was a way to skip this check).
+ */
 export function submittedTooFast(startedAt: number | undefined, now = Date.now()): boolean {
-  if (typeof startedAt !== "number") return false;
+  if (typeof startedAt !== "number") return true;
   const elapsed = now - startedAt;
   return elapsed >= 0 && elapsed < MIN_FILL_MS;
 }

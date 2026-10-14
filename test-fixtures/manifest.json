@@ -1,0 +1,303 @@
+{
+  "class": [
+    {
+      "file": "class-analyser/01-valid-sample-24-students.csv",
+      "expect": "ok",
+      "students": 24,
+      "topics": 6
+    },
+    {
+      "file": "class-analyser/02-valid-percentages-no-max-row.csv",
+      "expect": "ok",
+      "students": 4,
+      "topics": 3
+    },
+    {
+      "file": "class-analyser/03-valid-absent-markers.csv",
+      "expect": "ok",
+      "students": 4,
+      "topics": 3
+    },
+    {
+      "file": "class-analyser/04-valid-negative-marking-jee.csv",
+      "expect": "ok",
+      "students": 4,
+      "topics": 3
+    },
+    {
+      "file": "class-analyser/05-valid-semicolon-decimal-comma.csv",
+      "expect": "ok",
+      "students": 2,
+      "topics": 2
+    },
+    {
+      "file": "class-analyser/06-valid-tab-separated.tsv",
+      "expect": "ok",
+      "students": 2,
+      "topics": 2
+    },
+    {
+      "file": "class-analyser/07-valid-quotes-and-bom.csv",
+      "expect": "ok",
+      "students": 2,
+      "topics": 2
+    },
+    {
+      "file": "class-analyser/08-valid-hindi-devanagari.csv",
+      "expect": "ok",
+      "students": 3,
+      "topics": 2
+    },
+    {
+      "file": "class-analyser/09-valid-college-units.csv",
+      "expect": "ok",
+      "students": 30,
+      "topics": 5
+    },
+    {
+      "file": "class-analyser/10-valid-mm-label-and-percent-cells.csv",
+      "expect": "ok",
+      "students": 2,
+      "topics": 2,
+      "firstScores": [
+        30,
+        12
+      ]
+    },
+    {
+      "file": "class-analyser/11-valid-500-students-limit.csv",
+      "expect": "ok",
+      "students": 500,
+      "topics": 3
+    },
+    {
+      "file": "class-analyser/12-valid-40-topics-limit.csv",
+      "expect": "ok",
+      "students": 10,
+      "topics": 40
+    },
+    {
+      "file": "class-analyser/13-valid-spreadsheet-injection-ids.csv",
+      "expect": "ok",
+      "students": 4,
+      "topics": 1
+    },
+    {
+      "file": "class-analyser/14-valid-plan-whole-class-group-maintain.csv",
+      "expect": "ok",
+      "students": 6,
+      "topics": 3,
+      "plan": [
+        "whole_class",
+        "small_group",
+        "maintain"
+      ]
+    },
+    {
+      "file": "class-analyser/20-error-501-students.csv",
+      "expect": "error",
+      "issue": "at most 500"
+    },
+    {
+      "file": "class-analyser/21-error-41-topics.csv",
+      "expect": "error",
+      "issue": "at most 40 topics"
+    },
+    {
+      "file": "class-analyser/22-error-mark-above-max.csv",
+      "expect": "error",
+      "issue": "above the maximum of 20"
+    },
+    {
+      "file": "class-analyser/23-error-marks-without-max-row.csv",
+      "expect": "error",
+      "issue": "add a MAX row"
+    },
+    {
+      "file": "class-analyser/24-error-text-in-marks.csv",
+      "expect": "error",
+      "issue": "isn't a number"
+    },
+    {
+      "file": "class-analyser/25-error-duplicate-topic.csv",
+      "expect": "error",
+      "issue": "appears twice"
+    },
+    {
+      "file": "class-analyser/26-error-duplicate-roll-number.csv",
+      "expect": "error",
+      "issue": "appears more than once"
+    },
+    {
+      "file": "class-analyser/27-error-header-only.csv",
+      "expect": "error",
+      "issue": "at least one student"
+    },
+    {
+      "file": "class-analyser/28-error-no-topic-columns.csv",
+      "expect": "error",
+      "issue": "at least one topic"
+    },
+    {
+      "file": "class-analyser/29-error-max-zero.csv",
+      "expect": "error",
+      "issue": "Maximum marks must be a number above 0"
+    },
+    {
+      "file": "class-analyser/30-error-total-row-at-bottom.csv",
+      "expect": "error",
+      "issue": "summary"
+    },
+    {
+      "file": "class-analyser/31-error-total-column.csv",
+      "expect": "error",
+      "issue": "total or result column"
+    },
+    {
+      "file": "class-analyser/32-error-second-id-column.csv",
+      "expect": "error",
+      "issue": "ID column"
+    },
+    {
+      "file": "class-analyser/33-error-blank-roll-number.csv",
+      "expect": "error",
+      "issue": "no roll number"
+    },
+    {
+      "file": "class-analyser/34-error-hex-and-exponent.csv",
+      "expect": "error",
+      "issue": "isn't a number"
+    },
+    {
+      "file": "class-analyser/35-error-percent-over-100.csv",
+      "expect": "error",
+      "issue": "between 0% and 100%"
+    },
+    {
+      "file": "class-analyser/36-error-below-negative-max.csv",
+      "expect": "error",
+      "issue": "below the lowest possible score"
+    },
+    {
+      "file": "class-analyser/37-error-empty-file.csv",
+      "expect": "error",
+      "issue": "Add a header row"
+    },
+    {
+      "file": "class-analyser/38-error-over-1mb.csv",
+      "expect": "too_large",
+      "note": "Refused: “limit is 1 MB”"
+    },
+    {
+      "file": "class-analyser/39-error-wrong-file-type.xlsx",
+      "expect": "upload_rejected"
+    }
+  ],
+  "followUp": [
+    {
+      "first": "follow-up/01-unit-test.csv",
+      "second": "follow-up/02-follow-up-check.csv",
+      "matchedStudents": 23,
+      "onlyFirstTopics": [
+        "Redox"
+      ],
+      "onlySecondTopics": [
+        "Electrochemistry"
+      ],
+      "unmatchedStudents": {
+        "onlyFirst": 1,
+        "onlySecond": 1
+      }
+    },
+    {
+      "first": "follow-up/01-unit-test.csv",
+      "second": "follow-up/03-unrelated-test.csv",
+      "noMatch": true
+    }
+  ],
+  "tracker": [
+    {
+      "tests": [
+        "tracker/unit-1.csv",
+        "tracker/unit-2.csv",
+        "tracker/unit-3.csv"
+      ],
+      "persistent": [
+        {
+          "student": "R03",
+          "topic": "Algebra",
+          "tests": 3
+        },
+        {
+          "student": "R05",
+          "topic": "Algebra",
+          "tests": 2
+        },
+        {
+          "student": "R07",
+          "topic": "Geometry",
+          "tests": 2
+        },
+        {
+          "student": "R08",
+          "topic": "Statistics",
+          "tests": 3
+        }
+      ]
+    }
+  ],
+  "backups": [
+    {
+      "file": "tracker/backup-valid.json",
+      "expect": "ok"
+    },
+    {
+      "file": "tracker/backup-corrupt.json",
+      "expect": "error",
+      "message": "not valid JSON"
+    },
+    {
+      "file": "tracker/backup-wrong-version.json",
+      "expect": "error",
+      "message": "newer version"
+    },
+    {
+      "file": "tracker/backup-bad-test-data.json",
+      "expect": "error",
+      "message": "Broken test"
+    },
+    {
+      "file": "tracker/backup-51-classes.json",
+      "expect": "error",
+      "message": "isn't a valid"
+    },
+    {
+      "file": "tracker/backup-script-in-names.json",
+      "expect": "ok"
+    }
+  ],
+  "links": [
+    {
+      "file": "student-links/valid-links-localhost.txt",
+      "count": 24
+    },
+    {
+      "file": "student-links/edge-case-links.csv",
+      "edgeCases": true
+    }
+  ],
+  "forms": [
+    {
+      "file": "forms/invite-test-cases.csv",
+      "schema": "invite"
+    },
+    {
+      "file": "forms/pilot-test-cases.csv",
+      "schema": "pilot"
+    },
+    {
+      "file": "forms/contact-test-cases.csv",
+      "schema": "contact"
+    }
+  ]
+}

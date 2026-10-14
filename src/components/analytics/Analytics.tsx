@@ -28,7 +28,7 @@ export function Analytics() {
 
   if (!GA_VALID) return null;
   // Personal student pages never load analytics.
-  if (pathname === "/r" || pathname.startsWith("/me")) return null;
+  if (pathname === "/r" || pathname.startsWith("/me") || pathname.startsWith("/dev")) return null;
 
   return (
     <>

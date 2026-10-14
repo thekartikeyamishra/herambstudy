@@ -1,0 +1,6 @@
+Roll no,Algebra
+MAX,10
+=HYPERLINK("http://example.test"),3
++SUM(1;2),7
+@cmd,4
+-R4,9

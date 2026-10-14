@@ -30,8 +30,14 @@ export function loadHistory(s: Storage | null = storage()): { ok: boolean; histo
   try {
     const raw = s.getItem(STUDENT_KEY);
     if (!raw) return { ok: true, history: empty() };
-    const parsed = savedSchema.safeParse(JSON.parse(raw));
-    return parsed.success ? { ok: true, history: parsed.data } : { ok: true, history: empty() };
+    const data = JSON.parse(raw) as unknown;
+    const parsed = savedSchema.safeParse(data);
+    if (parsed.success) return { ok: true, history: parsed.data };
+    // Salvage: keep every entry that is still valid instead of discarding the whole history.
+    const list = (data as { reports?: unknown })?.reports;
+    const entry = savedSchema.shape.reports.element;
+    const kept = Array.isArray(list) ? list.flatMap((r) => { const e = entry.safeParse(r); return e.success ? [e.data] : []; }) : [];
+    return { ok: true, history: { version: 1, reports: kept.slice(0, MAX_SAVED_REPORTS) } };
   } catch {
     return { ok: false, history: empty() };
   }

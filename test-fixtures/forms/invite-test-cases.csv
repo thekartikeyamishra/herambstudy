@@ -1,0 +1,10 @@
+case,email,name,role,country,useCase,privacyAcknowledged,marketingConsent,expected
+valid-minimal,teacher@example.com,,teacher,IN,track_progress,true,false,valid
+valid-mixed-case-spaces,  Teacher@Example.COM ,Ravi Kumar,tutor,IN,find_learning_gaps,true,true,valid
+valid-hindi-name,ram@example.com,राम शर्मा,student,IN,exam_preparation,true,false,valid
+missing-email,,,teacher,IN,track_progress,true,false,invalid:email
+email-no-domain,teacher@example,,teacher,IN,track_progress,true,false,invalid:email
+no-privacy-tick,a@example.com,,teacher,IN,track_progress,false,false,invalid:privacyAcknowledged
+unknown-role,a@example.com,,admin,IN,track_progress,true,false,invalid:role
+unknown-country,a@example.com,,teacher,XX,track_progress,true,false,invalid:country
+name-81-chars,a@example.com,xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx,teacher,IN,track_progress,true,false,invalid:name

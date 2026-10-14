@@ -9,6 +9,7 @@ import { statusFor, statusLabel } from "@/content/sampleData";
 import {
   analyseClass,
   buildDataset,
+  checkTextSize,
   groupsToCsv,
   LIMITS,
   parseTable,
@@ -56,7 +57,8 @@ export function ClassAnalyser() {
   }, []);
 
   function analyse(source = text) {
-    const { dataset, issues: found } = buildDataset(parseTable(source));
+    const tooBig = checkTextSize(source);
+    const { dataset, issues: found } = tooBig ? { dataset: null, issues: [{ row: 1, message: tooBig }] } : buildDataset(parseTable(source));
     setIssues(found);
     if (!dataset) {
       setData(null);

@@ -1,6 +1,6 @@
 {
   "name": "heramb-study",
-  "version": "0.1.0",
+  "version": "0.6.0",
   "private": true,
   "description": "Heramb.study — invite-only launch website. Progress, made visible.",
   "engines": {
@@ -19,7 +19,9 @@
     "test:rules": "npx -y firebase-tools@14 emulators:exec --only firestore --project demo-heramb \"npx vitest run --config vitest.rules.config.ts\"",
     "icons": "node scripts/generate-icons.mjs",
     "check": "npm run typecheck && npm run lint && npm run test && npm run build",
-    "waitlist": "node scripts/waitlist-admin.mjs"
+    "waitlist": "node scripts/waitlist-admin.mjs",
+    "smoke": "node scripts/smoke.mjs",
+    "smoke:prod": "node scripts/smoke.mjs --production"
   },
   "dependencies": {
     "firebase-admin": "14.5.0",

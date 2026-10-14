@@ -485,3 +485,56 @@ test.describe("student report links", () => {
     await expect(page.getByTestId("progress-empty")).toBeVisible();
   });
 });
+
+test.describe("v0.6 developer hub and edge cases", () => {
+  test("developer hub shows environment, feature map, pages and test files", async ({ page }, info) => {
+    test.skip(info.project.name !== "desktop", "run once");
+    await page.goto("/dev");
+    await expect(page.getByTestId("dev-banner")).toContainText("local development only");
+    await expect(page.getByTestId("dev-features")).toContainText("Student report links");
+    await expect(page.getByTestId("dev-hidden-pages")).toContainText("/r — student report");
+    await expect(page.getByTestId("dev-fixtures")).toContainText("class-analyser/30-error-total-row-at-bottom.csv");
+    // A dev-only download works and is a real file.
+    const res = await page.request.get("/api/dev/fixtures/class-analyser/01-valid-sample-24-students.csv");
+    expect(res.status()).toBe(200);
+    expect(await res.text()).toMatch(/^Roll no,/);
+  });
+
+  test("seeded student history appears in My progress", async ({ page }, info) => {
+    test.skip(info.project.name !== "desktop", "run once");
+    await page.goto("/dev");
+    await page.getByRole("button", { name: /Seed student history/ }).click();
+    await expect(page.getByTestId("dev-local")).toContainText("saved");
+    await page.goto("/me");
+    await expect(page.getByTestId("progress")).toContainText("Reports saved");
+    await expect(page.getByTestId("topic-history")).toContainText("Equilibrium");
+  });
+
+  test("a 'Total' row is reported instead of being analysed as a student", async ({ page }) => {
+    await page.goto("/resources/class-test-analyser");
+    await page.getByLabel("Or paste from Excel / Google Sheets").fill("Roll,A,B\nMAX,10,10\nR1,5,6\nTotal,12,14");
+    await page.getByRole("button", { name: "Analyse class" }).click();
+    await expect(page.getByTestId("class-issues")).toContainText("summary");
+    await expect(page.getByTestId("class-results")).toHaveCount(0);
+  });
+
+  test("uploading an Excel file is refused with a clear message", async ({ page }) => {
+    await page.goto("/resources/class-test-analyser");
+    await page.locator('input[type="file"]').first().setInputFiles("test-fixtures/class-analyser/39-error-wrong-file-type.xlsx");
+    await expect(page.getByText("Please choose a .csv file", { exact: false })).toBeVisible();
+  });
+
+  test("uploading a fixture CSV analyses it", async ({ page }) => {
+    await page.goto("/resources/class-test-analyser");
+    await page.locator('input[type="file"]').first().setInputFiles("test-fixtures/class-analyser/10-valid-mm-label-and-percent-cells.csv");
+    await expect(page.getByTestId("class-results")).toContainText("Optics");
+  });
+
+  test("tampered tracker data shows a recovery message, not a crash", async ({ page }, info) => {
+    test.skip(info.project.name !== "desktop", "run once");
+    await page.goto("/dev");
+    await page.getByRole("button", { name: "Simulate corrupt tracker data" }).click();
+    await page.goto("/tracker");
+    await expect(page.getByText("Saved data couldn't be read")).toBeVisible();
+  });
+});

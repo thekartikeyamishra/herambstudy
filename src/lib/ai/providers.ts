@@ -15,7 +15,7 @@ export type GenerateRequest = { system: string; user: string; maxTokens: number;
 export type GenerateResult = { text: string; inputTokens: number | null; outputTokens: number | null };
 
 export interface AiProvider {
-  id: "anthropic" | "openai_compatible";
+  id: "anthropic" | "openai_compatible" | "mock";
   model: string;
   generate(req: GenerateRequest): Promise<GenerateResult>;
 }
@@ -27,6 +27,12 @@ export const DEFAULT_ANTHROPIC_MODEL = "claude-haiku-5-5";
 
 export function getProvider(env: Env = process.env): AiProvider | null {
   const kind = (env.AI_PROVIDER ?? "none").trim();
+  // Development only: a free, offline provider for testing the AI path and its fallbacks.
+  if (kind === "mock") {
+    // `process.env.NODE_ENV` is replaced at build time, so production builds drop the mock entirely.
+    if (process.env.NODE_ENV === "production" || env.NODE_ENV === "production") return null;
+    return mockProvider(env.AI_MOCK_MODE);
+  }
   const key = env.AI_API_KEY?.trim();
   if (kind === "anthropic" && key) {
     return anthropicProvider(key, env.AI_MODEL?.trim() || DEFAULT_ANTHROPIC_MODEL);
@@ -94,6 +100,40 @@ function openAiCompatibleProvider(baseUrl: string, apiKey: string, model: string
         text: data.choices?.[0]?.message?.content ?? "",
         inputTokens: data.usage?.prompt_tokens ?? null,
         outputTokens: data.usage?.completion_tokens ?? null,
+      };
+    },
+  };
+}
+
+/**
+ * Mock provider for local testing (never available in production).
+ * AI_MOCK_MODE: ok (default) | fail (provider error) | garbage (unusable output) | slow (exceeds the timeout)
+ */
+export function mockProvider(mode = "ok"): AiProvider {
+  return {
+    id: "mock",
+    model: `mock-${mode}`,
+    async generate({ signal }) {
+      if (mode === "fail") throw new Error("mock failure");
+      if (mode === "slow") {
+        await new Promise<void>((resolve, reject) => {
+          const t = setTimeout(resolve, 20_000);
+          signal?.addEventListener("abort", () => {
+            clearTimeout(t);
+            reject(new Error("aborted"));
+          });
+        });
+      }
+      if (mode === "garbage") return { text: "Sorry, I can't help with that.", inputTokens: 10, outputTokens: 8 };
+      return {
+        text: JSON.stringify({
+          headline: "[MOCK AI] Focus this week on the two weakest topics.",
+          priorities: ["[MOCK] Reteach the weakest topic to the whole class.", "[MOCK] Run a 15-minute recap group for the next one."],
+          parentNote: "[MOCK] This is placeholder text from the development mock provider, not a real AI reply.",
+          caution: "[MOCK] Development only.",
+        }),
+        inputTokens: 0,
+        outputTokens: 0,
       };
     },
   };

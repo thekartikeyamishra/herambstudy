@@ -30,3 +30,6 @@
 | 22 | Medium | Student report links can be forwarded | Anyone with a link sees that report. Mitigation: guidance to send in personal chats and use roll numbers; future paid delivery adds sign-in |
 | 23 | Low | "Shared by" name is not verified | Labelled as sender-typed on the report page; verified institute branding comes with paid accounts |
 | 24 | Low | Very long topic lists make long links | Capped at 40 topics (~2–4 KB links), which WhatsApp handles |
+| 25 | Low | "75%" cells are converted against the topic maximum | Mixing marks and percentages in one column is allowed; teachers should keep one format per column |
+| 26 | Low | Sheets with marks written as "12/20" are rejected | Error message explains; split marks and maximum into a MAX row |
+| 27 | Info | Dev hub shows the email outbox as plain text | HTML version of emails is not rendered in the hub; use a real Resend test address to see final HTML |

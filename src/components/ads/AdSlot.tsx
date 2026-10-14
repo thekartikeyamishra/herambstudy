@@ -42,6 +42,19 @@ export function AdSlot() {
     }
   }, [eligible, consented]);
 
+  // Development preview of where an ad would appear (no Google script is loaded).
+  // `process.env.NODE_ENV` is replaced at build time, so this block is removed from production bundles.
+  if (process.env.NODE_ENV !== "production" && process.env.NEXT_PUBLIC_ADS_PREVIEW === "true" && isAdAllowedOnPath(pathname)) {
+    return (
+      <aside aria-label="Advertisement preview" data-testid="ad-preview" className="no-print my-12 border-y border-line py-4">
+        <p className="mb-2 text-center text-[0.6875rem] uppercase tracking-[0.14em] text-ink-muted">Advertisement</p>
+        <div className="flex min-h-[280px] items-center justify-center rounded-xl border-2 border-dashed border-warn/50 bg-warn-tint/40 text-sm font-medium text-warn">
+          Ad slot preview — development only
+        </div>
+      </aside>
+    );
+  }
+
   if (!eligible || !consented) return null;
 
   return (

@@ -15,6 +15,8 @@ import type { PilotRecord } from "./types";
 
 export type EmailConfig = {
   sending: boolean;
+  /** Development only: emails are captured in memory and shown at /dev instead of being sent. */
+  outbox: boolean;
   tokens: boolean;
   from: string | null;
   replyTo: string | null;
@@ -24,12 +26,14 @@ export type EmailConfig = {
 const EMAIL_RE = /^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/;
 
 export function emailConfig(): EmailConfig {
-  const from = process.env.EMAIL_FROM?.trim() || null;
+  const outbox = process.env.NODE_ENV !== "production" && process.env.EMAIL_DEV_OUTBOX === "true";
+  const from = process.env.EMAIL_FROM?.trim() || (outbox ? "Heramb.study (dev) <dev@heramb.test>" : null);
   const fromOk = Boolean(from && (EMAIL_RE.test(from) || /^[^<>]+<[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+>$/.test(from)));
   const owner = process.env.OWNER_NOTIFICATION_EMAIL?.trim() || null;
   const reply = siteConfig.contactEmail;
   return {
-    sending: Boolean(process.env.RESEND_API_KEY?.trim()) && fromOk,
+    sending: (Boolean(process.env.RESEND_API_KEY?.trim()) && fromOk) || outbox,
+    outbox,
     tokens: (process.env.EMAIL_TOKEN_SECRET ?? "").length >= 32,
     from: fromOk ? from : null,
     replyTo: reply,
@@ -73,9 +77,25 @@ export type OutgoingEmail = {
   replyTo?: string | null;
 };
 
+export type OutboxEntry = OutgoingEmail & { at: string; from: string };
+const og = globalThis as typeof globalThis & { __herambOutbox?: OutboxEntry[] };
+
+/** Development outbox (most recent first). Always empty in production. */
+export function devOutbox(): OutboxEntry[] {
+  return process.env.NODE_ENV === "production" ? [] : (og.__herambOutbox ?? []);
+}
+export function clearDevOutbox(): void {
+  og.__herambOutbox = [];
+}
+
 export async function deliver(message: OutgoingEmail): Promise<boolean> {
   const cfg = emailConfig();
   if (!cfg.sending || !cfg.from) return false;
+  if (process.env.NODE_ENV !== "production" && cfg.outbox) {
+    // Development: capture instead of sending. Takes priority over Resend so dev never emails real people by accident.
+    og.__herambOutbox = [{ ...message, at: new Date().toISOString(), from: cfg.from }, ...(og.__herambOutbox ?? [])].slice(0, 50);
+    return true;
+  }
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 8000);
   try {

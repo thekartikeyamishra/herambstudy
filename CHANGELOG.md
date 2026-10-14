@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.6.0 — 14 October 2026
+
+Focus: testability. Every feature can be reached and tested locally, developer access can't reach production, and an edge-case audit fixed real loopholes.
+
+### Added
+- **Developer hub (`/dev`)** — local development only. Shows the live environment, a feature map (where each feature is, when users see it, whether it's visible right now, how to turn it on), every page including hidden ones, browser-data tools (seed demo tracker/student data, simulate corrupt data, clear), the in-memory submissions with reset, the email outbox, a signed-link generator for double opt-in, and downloads for all test files. Plus `/dev/crash` to see the error page.
+- **Kept out of production by construction** — dev routes use the `*.dev.tsx` / `*.dev.ts` extension, which only `next dev` recognises (`pageExtensions` in `next.config.ts`); dev switches check `process.env.NODE_ENV` so the build deletes them. Verified: no dev code anywhere in the production `.next/` output, and every dev route returns 404.
+- **Developer settings** — `.env.development.example` (copy to `.env.development.local`; loaded only by `npm run dev`): in-memory store, **email outbox** (captures emails instead of sending; wins over Resend so dev never emails real people), **mock AI provider** (`AI_PROVIDER=mock`, `AI_MOCK_MODE=ok|fail|garbage|slow`), **ad-slot preview**, raised rate limits.
+- **53 test files** in `test-fixtures/` (class sheets, follow-ups, tracker tests and backups, student links, form cases) with `manifest.json` + `README.md`; `tests/unit/fixtures.test.ts` checks every one.
+- **Live smoke test** — `npm run smoke` (28 checks in dev) and `npm run smoke:prod` (29 checks against a production build, including "dev routes don't exist").
+- **`docs/TESTING.md`** (and a PDF version) — feature map, flows, settings, test files, release checklist.
+
+### Fixed (edge-case audit — each has a regression test in `tests/unit/edge-cases.test.ts`)
+- "Total"/"Average" rows were analysed as students; "Total"/"Percentage"/"Rank" columns as topics; a second ID column (e.g. Roll No beside Name) as marks — now explicit errors.
+- Max-marks rows labelled "M.M.", "Full marks", "Max. Marks" were read as a student scoring 100% — now recognised.
+- Blank roll numbers became "Student 1" — now an error (needed for matching across tests).
+- "0x10", "1e1", "Infinity" were accepted as numbers — now rejected; "75%" is now accepted and converted against the topic maximum.
+- Pasted text over 1 MB could be saved to the tracker and make **all** saved classes unreadable — now refused, and storage validates before every write.
+- One damaged entry wiped a student's whole saved history — now only that entry is dropped.
+- Report links with trailing "." or "%20" (chat apps) failed — now open; links use the production URL when configured.
+- Line breaks were allowed in name/institution/city (could reach email subjects) — now rejected.
+- Forms posted without the timing field skipped the bot check — now rejected.
+- Smoke-test design bug caught during development: its reset-route check wiped test data — now uses a no-op request.
+
+
 ## 0.5.0 — 14 October 2026
 
 Focus: a sustainable business model built into the product — value that compounds with use (ethical retention), clear free-vs-paid lines, and AI that is cheap, swappable and optional.

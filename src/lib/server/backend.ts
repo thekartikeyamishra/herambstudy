@@ -67,3 +67,20 @@ export function __setBackendForTests(backend: Backend | null): void {
   g.__herambBackendOverride = backend;
   g.__herambEdgeLimiter = undefined;
 }
+
+/** Development: inspect the in-memory store (null unless the memory store is active). */
+export function devMemorySnapshot() {
+  if (process.env.NODE_ENV === "production") return null;
+  const b = getBackend();
+  if (b.kind !== "memory") return null;
+  const m = memoryBundle();
+  return { invites: [...m.invites.records.values()], pilots: [...m.pilots.records], contacts: [...m.contacts.records] };
+}
+
+/** Development: wipe the in-memory store and every rate-limit counter. */
+export function devResetMemory(): boolean {
+  if (process.env.NODE_ENV === "production") return false;
+  g.__herambMemory = undefined;
+  g.__herambEdgeLimiter = undefined;
+  return true;
+}

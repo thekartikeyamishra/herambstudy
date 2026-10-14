@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { track } from "@/lib/client/analytics";
 import { todayIso } from "@/lib/client/workspace";
+import { siteConfig } from "@/config/site";
 import type { ClassAnalysis, Dataset } from "@/lib/tools/classAnalysis";
 import { buildReports, linksAsCsv, linksAsMessageList, reportUrl } from "@/lib/tools/studentReport";
 import { downloadText } from "./ToolShell";
@@ -20,7 +21,8 @@ export function StudentLinks({ data, analysis, isSample }: { data: Dataset; anal
   const [copied, setCopied] = useState<string | null>(null);
 
   useEffect(() => {
-    setOrigin(window.location.origin);
+    // Prefer the configured production URL so links never point at a preview or local address.
+    setOrigin(siteConfig.url.startsWith("https://") ? siteConfig.url : window.location.origin);
     try {
       setInstitute(isSample ? "Fictional Classes" : window.localStorage.getItem(SENDER_KEY) ?? "");
     } catch {

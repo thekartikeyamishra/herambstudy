@@ -15,7 +15,7 @@ import {
   todayIso,
   type StoredClass,
 } from "@/lib/client/workspace";
-import { buildDataset, LIMITS, parseTable, sampleCsv, sampleFollowUpCsv, type ParseIssue } from "@/lib/tools/classAnalysis";
+import { buildDataset, checkTextSize, LIMITS, parseTable, sampleCsv, sampleFollowUpCsv, type ParseIssue } from "@/lib/tools/classAnalysis";
 import { trackClass } from "@/lib/tools/tracker";
 import { cn } from "@/lib/cn";
 import { downloadText } from "@/components/resources/ToolShell";
@@ -375,6 +375,8 @@ function AddTestForm({ onAdd, disabled }: { onAdd: (t: StoredClass["tests"][numb
     setError("");
     if (!name.trim()) return setError("Please name this test.");
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return setError("Please choose the test date.");
+    const tooBig = checkTextSize(raw);
+    if (tooBig) return setError(tooBig);
     const { dataset, issues: found } = buildDataset(parseTable(raw));
     setIssues(found);
     if (!dataset) return;

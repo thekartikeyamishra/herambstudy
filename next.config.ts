@@ -20,6 +20,12 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  /**
+   * Developer-only routes are named *.dev.tsx / *.dev.ts (e.g. src/app/dev/page.dev.tsx).
+   * They are only recognised by `next dev`. A production `next build` never sees them,
+   * so the /dev hub and /api/dev/* routes do not exist — and their code is not shipped.
+   */
+  pageExtensions: isDev ? ["dev.tsx", "dev.ts", "tsx", "ts"] : ["tsx", "ts"],
   reactStrictMode: true,
   poweredByHeader: false,
   compress: true,

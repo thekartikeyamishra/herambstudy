@@ -69,9 +69,12 @@ export function loadWorkspace(storage: Storage | null = safeStorage()): LoadResu
   }
 }
 
-export type SaveResult = { ok: true } | { ok: false; reason: "too_large" | "unavailable" | "quota" };
+export type SaveResult = { ok: true } | { ok: false; reason: "too_large" | "unavailable" | "quota" | "invalid" };
 
 export function saveWorkspace(ws: Workspace, storage: Storage | null = safeStorage()): SaveResult {
+  // Validate before writing: anything that wouldn't load back must never be stored,
+  // otherwise all saved classes would look corrupt on the next visit.
+  if (!workspaceSchema.safeParse(ws).success) return { ok: false, reason: "invalid" };
   const json = JSON.stringify(ws);
   if (new TextEncoder().encode(json).byteLength > MAX_WORKSPACE_BYTES) return { ok: false, reason: "too_large" };
   if (!storage) return { ok: false, reason: "unavailable" };
@@ -84,7 +87,8 @@ export function saveWorkspace(ws: Workspace, storage: Storage | null = safeStora
   }
 }
 
-export function saveErrorMessage(reason: "too_large" | "unavailable" | "quota"): string {
+export function saveErrorMessage(reason: "too_large" | "unavailable" | "quota" | "invalid"): string {
+  if (reason === "invalid") return "That couldn't be saved because some of it is too long or incomplete (each test must be under 1 MB, names under 80 characters). Nothing was changed.";
   if (reason === "unavailable") return "This browser isn't allowing local storage (private mode or blocked site data), so nothing could be saved.";
   return "Your saved classes are too large for this browser's storage. Export a backup, then delete old tests or classes.";
 }

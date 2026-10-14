@@ -1,4 +1,4 @@
-# Test results — v0.5.0, 14 October 2026
+# Test results — v0.6.0, 14 October 2026
 
 Environment: Linux sandbox, Node 22.22.0, npm 10.9.4, Chromium (Playwright build 1194). These are the actual results of commands run on this code.
 
@@ -6,12 +6,15 @@ Environment: Linux sandbox, Node 22.22.0, npm 10.9.4, Chromium (Playwright build
 |---|---|---|
 | TypeScript (strict) | `npm run typecheck` | **Pass** — 0 errors |
 | Lint | `npm run lint` | **Pass** — 0 errors, 0 warnings |
-| Unit / integration / component | `npm test` (Vitest 5) | **Pass** — 137/137 tests in 12 files |
+| Unit / integration / component | `npm test` (Vitest 5) | **Pass** — 207/207 tests in 15 files (incl. all 53 test fixtures and 14 edge-case regressions) |
 | Production build | `npm run build` | **Pass** — 36 routes; every page statically prerendered, only `/api/*` dynamic |
-| End-to-end | `npm run test:e2e` (desktop 1366px, tablet 820px, mobile 360px) | **Pass** — 183 passed, 6 skipped. Full run: 181 passed; 2 failures re-run green — a 404 caused by editing files during the dev-server run, and the 320 px all-pages test exceeding its 60 s budget (budget raised to 300 s, like the axe scan) |
+| End-to-end | `npm run test:e2e` (desktop 1366px, tablet 820px, mobile 360px) | **Pass** — 195 passed, 0 failed, 12 skipped (single-viewport tests), one uninterrupted 9.6 min run |
 | Accessibility | axe-core WCAG 2.0/2.1/2.2 A+AA on 24 pages | **Pass** — 0 serious or critical violations |
 | Lighthouse | see `PERFORMANCE.md` | Perf 86–100 (mobile; audience pages 86–89), 100 (desktop); A11y 100; Best practices 100 |
 | Video | `cd video && npx tsc --noEmit` + full renders | **Pass** — 16:9, 9:16, 1:1 MP4s rendered |
+| Live smoke (dev) | `npm run smoke` | **Pass** — 28/28 |
+| Live smoke (production build) | `npm run smoke:prod` | **Pass** — 29/29; every `/dev` and `/api/dev/*` route 404 |
+| Dev code in production output | `grep` of `.next/` | **None** — no dev-only code in server or browser bundles |
 | Firestore rules | `npm run test:rules` | **Not run** — emulator download blocked in the build sandbox. Run locally. |
 | Dependency audit (production) | `npm audit --omit=dev` | **0 vulnerabilities** (after firebase-admin 14.5 upgrade + PostCSS override) |
 | Dependency audit (all, incl. dev tooling) | `npm audit` | 14 (2 moderate, 12 high), **dev-only**, see below |
@@ -52,6 +55,10 @@ Environment: Linux sandbox, Node 22.22.0, npm 10.9.4, Chromium (Playwright build
 - E2E: teacher creates links → student opens in a new tab → "Shared by" + focus topics → save → My progress shows topic history; invalid link explains itself; /r and /me carry noindex.
 - Plans: higher plans never remove features; free contains every available zero-cost tool including student links; public guarantees contain no unbacked promises (unit + E2E check on /pricing).
 - AI summary (from the earlier v0.5 work, now verified): aggregate-only input, provider fallback, quotas, cache; rule-based summary works with no AI configured.
+
+## Added in v0.6
+- Edge-case audit: 13 problems found by probing (see docs/TESTING.md §7), all fixed with regression tests.
+- Developer hub E2E: hub sections render, fixture download works, seeded student history appears in /me, corrupt tracker data shows a recovery message, Excel upload refused, fixture upload analysed, "Total" row rejected in the UI.
 
 ## Issues found by testing and fixed
 1. Layout shift on desktop from web-font swap → `next/font/local`.

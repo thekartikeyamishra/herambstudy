@@ -23,7 +23,23 @@ export type Dataset = {
 };
 
 const ABSENT = new Set(["", "-", "—", "ab", "abs", "absent", "na", "n/a", "x"]);
-const MAX_ROW = /^(max|max marks|maximum|out of|total)$/i;
+
+/** Labels for the optional maximum-marks row (Indian usage includes "M.M." and "Full marks"). */
+export const MAX_ROW = /^(max|max\.?\s*marks|maximum(\s*marks)?|m\.?\s*m\.?|full\s*marks|f\.?\s*m\.?|out\s*of|total\s*marks|total)$/i;
+/** Summary rows that teachers often leave at the bottom of a marks sheet. */
+const SUMMARY_ROW = /^(total|grand\s*total|sum|average|avg\.?|class\s*average|mean|highest|lowest|min(imum)?|max(imum)?)$/i;
+/** Header names that are identifiers, not topics (a second ID column would be analysed as marks). */
+const ID_COLUMN = /^(roll(\s*no\.?|\s*number)?|name|student(\s*name)?|admission(\s*no\.?)?|adm\.?\s*no\.?|s\.?\s*no\.?|sr\.?\s*no\.?|serial(\s*no\.?)?|section|class|batch|father'?s?\s*name|enrol+ment(\s*no\.?)?|reg(istration)?\.?\s*no\.?|id)$/i;
+/** Header names that are totals or results, not topics (they would double-count marks). */
+const TOTAL_COLUMN = /^(total|grand\s*total|overall|percentage|percent|%|aggregate|rank|position|grade|result|marks\s*obtained|obtained|sum|average|avg\.?)$/i;
+
+/** Rejects pasted or uploaded text above the size limit (protects the browser and saved data). */
+export function checkTextSize(text: string): string | null {
+  const bytes = new TextEncoder().encode(text).byteLength;
+  return bytes > LIMITS.bytes
+    ? `That's ${(bytes / 1_000_000).toFixed(1)} MB — the limit is 1 MB. Remove extra columns or split the class into smaller groups.`
+    : null;
+}
 
 /** Splits delimited text into rows of cells. Handles quotes, CRLF and BOM. */
 export function parseTable(text: string): string[][] {
@@ -66,11 +82,22 @@ export function parseTable(text: string): string[][] {
   return rows.filter((r) => r.some((c) => c.length > 0));
 }
 
-function toNumber(raw: string): number | null | "invalid" {
-  const v = raw.trim();
+const NUMBER = /^[+-]?(\d+(\.\d*)?|\.\d+)$/;
+
+/**
+ * Strict number parsing: plain decimals only (a single decimal comma is allowed).
+ * Rejects things Number() would silently accept, such as "0x10", "1e3" or "Infinity".
+ * A trailing "%" is returned separately so it can be converted against the topic maximum.
+ */
+function toNumber(raw: string): { value: number; percent: boolean } | null | "invalid" {
+  let v = raw.trim().replace(/\s+/g, "");
   if (ABSENT.has(v.toLowerCase())) return null;
-  const n = Number(v.replace(/,/g, "."));
-  return Number.isFinite(n) ? n : "invalid";
+  const percent = v.endsWith("%");
+  if (percent) v = v.slice(0, -1);
+  if ((v.match(/,/g) ?? []).length === 1 && !v.includes(".")) v = v.replace(",", ".");
+  if (!NUMBER.test(v)) return "invalid";
+  const n = Number(v);
+  return Number.isFinite(n) ? { value: n, percent } : "invalid";
 }
 
 export function buildDataset(rows: string[][]): { dataset: Dataset | null; issues: ParseIssue[] } {
@@ -93,6 +120,11 @@ export function buildDataset(rows: string[][]): { dataset: Dataset | null; issue
     const key = t.toLowerCase();
     if (t && seen.has(key)) issues.push({ row: 1, column: i + 2, message: `Topic "${t}" appears twice.` });
     seen.add(key);
+    if (t && ID_COLUMN.test(t)) {
+      issues.push({ row: 1, column: i + 2, message: `"${t}" looks like an ID column, not a topic. Keep one ID column (the first) and delete this one.` });
+    } else if (t && TOTAL_COLUMN.test(t)) {
+      issues.push({ row: 1, column: i + 2, message: `"${t}" looks like a total or result column, not a topic. Delete it — totals are worked out for you.` });
+    }
   });
 
   let body = rows.slice(1);
@@ -102,11 +134,11 @@ export function buildDataset(rows: string[][]): { dataset: Dataset | null; issue
     assumedPercent = false;
     maxes = topicNames.map((_, i) => {
       const n = toNumber(body[0]![i + 1] ?? "");
-      if (typeof n !== "number" || n <= 0) {
+      if (n === null || n === "invalid" || n.percent || n.value <= 0) {
         issues.push({ row: 2, column: i + 2, message: "Maximum marks must be a number above 0." });
         return 1;
       }
-      return n;
+      return n.value;
     });
     body = body.slice(1);
   }
@@ -120,17 +152,29 @@ export function buildDataset(rows: string[][]): { dataset: Dataset | null; issue
   const ids = new Set<string>();
   const students = body.map((r, idx) => {
     const rowNo = idx + rowOffset;
-    const id = (r[0] ?? "").slice(0, LIMITS.cellChars) || `Student ${idx + 1}`;
-    if (ids.has(id.toLowerCase())) issues.push({ row: rowNo, column: 1, message: `"${id}" appears more than once.` });
+    const id = (r[0] ?? "").slice(0, LIMITS.cellChars);
+    if (!id) issues.push({ row: rowNo, column: 1, message: "This row has no roll number or name. Every student needs one, so tests can be compared later." });
+    else if (SUMMARY_ROW.test(id) || MAX_ROW.test(id)) {
+      issues.push({ row: rowNo, column: 1, message: `"${id}" looks like a summary or maximum-marks row, not a student. A MAX row must come straight after the header; delete any total/average rows.` });
+      return { id, scores: topicNames.map(() => null) }; // one clear message for this row, not one per cell
+    }
+    if (id && ids.has(id.toLowerCase())) issues.push({ row: rowNo, column: 1, message: `"${id}" appears more than once.` });
     ids.add(id.toLowerCase());
     if (r.length - 1 > topicNames.length) issues.push({ row: rowNo, message: "This row has more values than there are topics." });
     const scores = topicNames.map((_, i) => {
-      const n = toNumber(r[i + 1] ?? "");
-      if (n === "invalid") {
-        issues.push({ row: rowNo, column: i + 2, message: `"${r[i + 1]}" isn't a number. Use a number, or leave blank / "AB" if absent.` });
+      const parsed = toNumber(r[i + 1] ?? "");
+      if (parsed === "invalid") {
+        issues.push({ row: rowNo, column: i + 2, message: `"${r[i + 1]}" isn't a number. Use a number (e.g. 14 or 7.5), "75%", or leave blank / "AB" if absent.` });
         return null;
       }
-      if (n !== null) {
+      if (parsed === null) return null;
+      // "75%" means 75% of this topic's maximum (or simply 75 when values are percentages).
+      const n = parsed.percent ? Math.round(((parsed.value / 100) * maxes[i]!) * 100) / 100 : parsed.value;
+      if (parsed.percent && (parsed.value < 0 || parsed.value > 100)) {
+        issues.push({ row: rowNo, column: i + 2, message: `${parsed.value}% isn't between 0% and 100%.` });
+        return null;
+      }
+      {
         const max = maxes[i]!;
         if (n > max) {
           issues.push({

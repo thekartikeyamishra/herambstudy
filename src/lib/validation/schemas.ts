@@ -14,6 +14,15 @@ const cleanText = (max: number) =>
     .max(max, `Please keep this under ${max} characters.`)
     .refine((v) => !CONTROL_CHARS.test(v), "Contains unsupported characters.");
 
+/** Single-line text: also rejects line breaks and tabs (these values can end up in email subjects). */
+const singleLine = (max: number) =>
+  cleanText(max).refine((v) => !/[\r\n\t]/.test(v), "Please keep this on one line.");
+
+const optionalSingleLine = (max: number) =>
+  z
+    .union([singleLine(max), z.literal(""), z.null(), z.undefined()])
+    .transform((v) => (typeof v === "string" && v.length > 0 ? v : null));
+
 const optionalText = (max: number) =>
   z
     .union([cleanText(max), z.literal(""), z.null(), z.undefined()])
@@ -93,13 +102,13 @@ const antiSpam = {
 
 export const inviteRequestSchema = z
   .object({
-    name: optionalText(80),
+    name: optionalSingleLine(80),
     email: emailSchema,
     role: z.enum(roleValues, { errorMap: () => ({ message: "Please choose the role that fits you best." }) }),
     country: z.enum(COUNTRY_CODES, { errorMap: () => ({ message: "Please choose your country." }) }),
     useCase: z.enum(useCaseValues, { errorMap: () => ({ message: "Please choose your main use case." }) }),
     useCaseNote: optionalText(500),
-    instituteName: optionalText(120),
+    instituteName: optionalSingleLine(120),
     instituteSize: z
       .union([z.enum(instituteSizeValues), z.literal(""), z.null(), z.undefined()])
       .transform((v) => (v ? v : null)),
@@ -133,7 +142,7 @@ const contactTopicValues = CONTACT_TOPICS.map((t) => t.value) as [ContactTopic, 
 
 export const contactMessageSchema = z
   .object({
-    name: cleanText(80).pipe(z.string().min(1, "Please tell us your name.")),
+    name: singleLine(80).pipe(z.string().min(1, "Please tell us your name.")),
     email: emailSchema,
     topic: z.enum(contactTopicValues, { errorMap: () => ({ message: "Please choose a topic." }) }),
     message: z
@@ -221,15 +230,15 @@ const valuesOf = <T extends ReadonlyArray<{ value: string }>>(list: T) =>
 
 export const pilotApplicationSchema = z
   .object({
-    contactName: cleanText(80).pipe(z.string().min(1, "Please tell us your name.")),
+    contactName: singleLine(80).pipe(z.string().min(1, "Please tell us your name.")),
     role: z.enum(valuesOf(PILOT_ROLES), { errorMap: () => ({ message: "Please choose your role." }) }),
     email: emailSchema,
     phone: z
       .union([z.string().trim().regex(/^\+?[0-9][0-9 ()-]{6,18}$/, "Please enter a valid phone number, or leave it blank."), z.literal(""), z.null(), z.undefined()])
       .transform((v) => (v ? v.replace(/[\s()-]/g, "") : null)),
     institutionType: z.enum(valuesOf(INSTITUTION_TYPES), { errorMap: () => ({ message: "Please choose your type of institution." }) }),
-    instituteName: cleanText(120).pipe(z.string().min(2, "Please enter your institution's name.")),
-    city: cleanText(80).pipe(z.string().min(2, "Please enter your city.")),
+    instituteName: singleLine(120).pipe(z.string().min(2, "Please enter your institution's name.")),
+    city: singleLine(80).pipe(z.string().min(2, "Please enter your city.")),
     country: z.enum(COUNTRY_CODES, { errorMap: () => ({ message: "Please choose your country." }) }),
     studentCount: z.enum(valuesOf(INSTITUTE_SIZES), { errorMap: () => ({ message: "Please choose an approximate size." }) }),
     exams: z
@@ -238,7 +247,7 @@ export const pilotApplicationSchema = z
       .max(PILOT_EXAMS.length)
       .transform((a) => Array.from(new Set(a))),
     testFrequency: z.enum(valuesOf(TEST_FREQUENCIES), { errorMap: () => ({ message: "Please choose how often you test." }) }),
-    currentTools: optionalText(300),
+    currentTools: optionalSingleLine(300),
     startWindow: z.enum(valuesOf(START_WINDOWS), { errorMap: () => ({ message: "Please choose when you'd like to start." }) }),
     priceComfort: z
       .union([z.enum(valuesOf(PRICE_COMFORT)), z.literal(""), z.null(), z.undefined()])

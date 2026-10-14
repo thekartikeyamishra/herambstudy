@@ -47,7 +47,8 @@ export function encodeReport(r: StudentReport): string {
 }
 
 export function decodeReport(fragment: string): StudentReport | null {
-  const raw = fragment.replace(/^#/, "").trim();
+  // Chat apps sometimes glue punctuation or spaces onto the end of a copied link.
+  const raw = fragment.replace(/^#/, "").trim().replace(/(%[0-9A-Fa-f]{2}|[^A-Za-z0-9_-])+$/, "");
   if (!raw || raw.length > 12_000 || !/^[A-Za-z0-9_-]+$/.test(raw)) return null;
   try {
     const parsed = reportSchema.safeParse(JSON.parse(fromBase64Url(raw)));

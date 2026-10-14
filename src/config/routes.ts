@@ -46,4 +46,4 @@ export function indexableRoutes(): RouteEntry[] {
  * Robots rules match by PREFIX, so never add short paths like "/r" here — it would also
  * block "/resources". Personal pages (/r, /me) are excluded with a noindex meta tag instead.
  */
-export const nonIndexedPrefixes = ["/api/", "/offline", "/email/"];
+export const nonIndexedPrefixes = ["/api/", "/offline", "/email/", "/dev/"];
