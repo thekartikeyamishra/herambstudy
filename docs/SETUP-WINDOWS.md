@@ -67,6 +67,17 @@ Create a dedicated service account with only the **Cloud Datastore User** role a
 
 Without these variables everything still works; no email is sent, and confirm/unsubscribe pages explain that links aren't active.
 
+## 3c. AI summaries (optional)
+
+Without this, users get instant rule-based summaries. To enable AI:
+```
+AI_PROVIDER=anthropic
+AI_API_KEY=<your key>          # server-only
+AI_MODEL=                      # optional; defaults to the small tier
+AI_GLOBAL_DAILY_LIMIT=300      # total AI calls per day across the site (your budget cap)
+```
+Or `AI_PROVIDER=openai_compatible` with `AI_BASE_URL=https://…/v1` and `AI_MODEL`. Check the provider's current model names and prices before enabling; every call logs `[ai] summary {model, in, out}` token counts so you can track cost.
+
 ## 4. Commands
 
 | Command | What it does |

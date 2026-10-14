@@ -208,6 +208,7 @@ export default function HomePage() {
               now={[
                 { title: "Free teacher & student resources", body: "Interactive diagnostic, gap analyser, report template and guides." },
                 { title: "Class test analyser", body: "Paste a batch\u2019s marks and get reteach groups and student reports — free." },
+                { title: "Class progress tracker & term reports", body: "Track every test for a class on your device; print a term report per student." },
                 { title: "Invite requests & institute pilots", body: "Join the early-access list, or apply for a pilot." },
                 { title: "Installable web app", body: "This site can be installed on supported devices and works offline for saved pages." },
               ]}

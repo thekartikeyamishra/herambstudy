@@ -1,6 +1,7 @@
 "use client";
 
 import Script from "next/script";
+import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { readConsent, writeConsent, type ConsentState } from "@/lib/client/analytics";
@@ -14,6 +15,7 @@ const GA_VALID = /^G-[A-Z0-9]+$/.test(GA_ID);
  * never granted from this banner.
  */
 export function Analytics() {
+  const pathname = usePathname();
   const [consent, setConsent] = useState<ConsentState | null | "unknown">("unknown");
 
   useEffect(() => {
@@ -25,6 +27,8 @@ export function Analytics() {
   }, []);
 
   if (!GA_VALID) return null;
+  // Personal student pages never load analytics.
+  if (pathname === "/r" || pathname.startsWith("/me")) return null;
 
   return (
     <>

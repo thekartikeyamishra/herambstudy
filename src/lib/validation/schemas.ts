@@ -164,9 +164,17 @@ export function fieldErrors(error: z.ZodError): Record<string, string> {
 
 /* ── Institute pilot application ─────────────────────────────────────────── */
 
+export const INSTITUTION_TYPES = [
+  { value: "coaching", label: "Coaching institute" },
+  { value: "school", label: "School" },
+  { value: "college", label: "College / university" },
+  { value: "tutor", label: "Tutoring centre" },
+] as const;
+export type InstitutionType = (typeof INSTITUTION_TYPES)[number]["value"];
+
 export const PILOT_ROLES = [
-  { value: "owner", label: "Owner or director" },
-  { value: "academic_head", label: "Academic head / centre head" },
+  { value: "owner", label: "Owner, director or principal" },
+  { value: "academic_head", label: "Academic head / HOD / coordinator" },
   { value: "teacher", label: "Teacher" },
   { value: "other", label: "Other" },
 ] as const;
@@ -177,7 +185,8 @@ export const PILOT_EXAMS = [
   { value: "jee_advanced", label: "JEE Advanced" },
   { value: "neet", label: "NEET" },
   { value: "foundation", label: "Foundation (Class 8–10)" },
-  { value: "boards", label: "Board exams" },
+  { value: "boards", label: "Board exams (CBSE / ICSE / State)" },
+  { value: "university", label: "University / semester exams" },
   { value: "other", label: "Other" },
 ] as const;
 export type PilotExam = (typeof PILOT_EXAMS)[number]["value"];
@@ -218,13 +227,14 @@ export const pilotApplicationSchema = z
     phone: z
       .union([z.string().trim().regex(/^\+?[0-9][0-9 ()-]{6,18}$/, "Please enter a valid phone number, or leave it blank."), z.literal(""), z.null(), z.undefined()])
       .transform((v) => (v ? v.replace(/[\s()-]/g, "") : null)),
-    instituteName: cleanText(120).pipe(z.string().min(2, "Please enter your institute's name.")),
+    institutionType: z.enum(valuesOf(INSTITUTION_TYPES), { errorMap: () => ({ message: "Please choose your type of institution." }) }),
+    instituteName: cleanText(120).pipe(z.string().min(2, "Please enter your institution's name.")),
     city: cleanText(80).pipe(z.string().min(2, "Please enter your city.")),
     country: z.enum(COUNTRY_CODES, { errorMap: () => ({ message: "Please choose your country." }) }),
     studentCount: z.enum(valuesOf(INSTITUTE_SIZES), { errorMap: () => ({ message: "Please choose an approximate size." }) }),
     exams: z
       .array(z.enum(valuesOf(PILOT_EXAMS)))
-      .min(1, "Please choose at least one exam.")
+      .min(1, "Please choose at least one.")
       .max(PILOT_EXAMS.length)
       .transform((a) => Array.from(new Set(a))),
     testFrequency: z.enum(valuesOf(TEST_FREQUENCIES), { errorMap: () => ({ message: "Please choose how often you test." }) }),

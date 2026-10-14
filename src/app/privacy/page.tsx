@@ -41,7 +41,7 @@ export default function PrivacyPage() {
       </table>
       <p>
         We never send names, email addresses or anything you type into our free tools to analytics. The free tools
-        (diagnostic, analysers, report template) run entirely in your browser; their contents are not sent to us.
+        (diagnostic, analysers, report template, class tracker) run entirely in your browser; their contents are not sent to us.
       </p>
 
       <h2>3. Legal basis</h2>
@@ -57,6 +57,7 @@ export default function PrivacyPage() {
         <li><strong>Google Cloud / Firebase (Cloud Firestore)</strong> — stores invite requests, contact messages and rate-limit counters. Database region: <strong>[REGION — e.g. asia-south1 (Mumbai); to be confirmed]</strong>.</li>
         <li><strong>Hosting provider</strong> — <strong>[Vercel or Firebase App Hosting — to be confirmed]</strong>, which serves the website and keeps server logs.</li>
         <li><strong>Google Analytics 4</strong> — only if analytics is enabled on this site and you consent.</li>
+        <li><strong>AI model provider</strong> — only if AI summaries are enabled. When you press “Write my summary”, we send topic names and class-level averages and counts — never names, roll numbers or individual marks — to the configured provider (for example Anthropic) to write the text. Requests are not used by us for anything else.</li>
         <li><strong>Resend</strong> — if email is enabled, sends the acknowledgement of your invite request, the confirmation link for product updates, and pilot notifications to us. It receives your email address and the message content.</li>
       </ul>
       <p>
@@ -100,6 +101,8 @@ export default function PrivacyPage() {
 
       <h2 id="cookies">8. Cookies and local storage</h2>
       <ul>
+        <li><strong>Student report links and “My progress” (only if used):</strong> a personal report link contains the report itself after the “#”, which browsers never send to a server — so Heramb doesn't receive or store it. Reports a student saves are kept in their own browser on that device. Anyone with a link can open it, so teachers should send each link only to that student or parent.</li>
+        <li><strong>Class progress tracker (only if you use it):</strong> the classes and test marks you save are stored in your own browser's local storage on that device. They are never sent to us, we can't see or recover them, and clearing your browser data deletes them. Use the tracker's Export button to keep a backup.</li>
         <li><strong>Strictly necessary:</strong> your analytics choice is saved in your browser's local storage so we don't ask again. If the site is installed or visited repeatedly, a service worker stores copies of pages on your device for offline use.</li>
         <li><strong>Analytics (optional):</strong> Google Analytics cookies are set only after you click "Allow analytics". Advertising storage is never enabled by that choice.</li>
         <li><strong>Advertising:</strong> this site does not currently show ads. If that changes, we'll update this policy and ask for any required consent first.</li>

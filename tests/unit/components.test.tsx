@@ -102,7 +102,7 @@ describe("SiteHeader", () => {
     expect(toggle).toHaveAttribute("aria-expanded", "false");
     await user.click(toggle);
     expect(screen.getByRole("button", { name: /close menu/i })).toHaveAttribute("aria-expanded", "true");
-    expect(within(screen.getByRole("navigation", { name: "Mobile" })).getByText("Free resources")).toBeVisible();
+    expect(within(screen.getByRole("navigation", { name: "Mobile" })).getByText("Free tools")).toBeVisible();
     await user.keyboard("{Escape}");
     await waitFor(() => expect(screen.getByRole("button", { name: /open menu/i })).toHaveAttribute("aria-expanded", "false"));
   });

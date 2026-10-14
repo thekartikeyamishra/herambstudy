@@ -94,3 +94,9 @@ Reasons: frequent tests generate data; owners feel parent-reporting pressure dir
 | 5 | Resource → invite conversion by page (GA4 events) | Identify which resource attracts the ICP |
 
 Record outcomes in this file with dates.
+
+## Update — 14 Oct 2026: schools and colleges
+Hypothesis: schools (Classes 6–12, unit/periodic tests) and colleges (internal assessments by unit) have the same "marks without diagnosis" problem as coaching institutes. Test: compare pilot applications and their price-comfort answers by `institutionType` (`npm run waitlist -- pilots`). Decide which segment to prioritise after ~20 applications or 8 weeks, whichever comes first.
+
+## Update — 14 Oct 2026: retention signal
+`tracker_test_saved` (GA4, consented visitors only) indicates teachers returning to add tests. A teacher saving 3+ tests for a class is the strongest pre-pilot buying signal we can observe without accounts. Ask pilot applicants whether they've used the tracker; ask tracker users (via the guide/footer) whether they'd pay for sync across devices and sharing with their HOD.

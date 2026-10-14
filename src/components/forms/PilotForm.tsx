@@ -11,6 +11,7 @@ import { cn } from "@/lib/cn";
 import {
   fieldErrors as toFieldErrors,
   INSTITUTE_SIZES,
+  INSTITUTION_TYPES,
   PILOT_EXAMS,
   PILOT_ROLES,
   pilotApplicationSchema,
@@ -24,6 +25,7 @@ type Values = {
   role: string;
   email: string;
   phone: string;
+  institutionType: string;
   instituteName: string;
   city: string;
   country: string;
@@ -42,6 +44,7 @@ const initial: Values = {
   role: "",
   email: "",
   phone: "",
+  institutionType: "",
   instituteName: "",
   city: "",
   country: "IN",
@@ -55,7 +58,7 @@ const initial: Values = {
   privacyAcknowledged: false,
 };
 
-const ORDER = ["contactName", "role", "email", "phone", "instituteName", "city", "country", "studentCount", "exams", "testFrequency", "startWindow", "privacyAcknowledged"];
+const ORDER = ["contactName", "role", "email", "phone", "institutionType", "instituteName", "city", "country", "studentCount", "exams", "testFrequency", "startWindow", "privacyAcknowledged"];
 
 export function PilotForm() {
   const [v, setV] = useState<Values>(initial);
@@ -68,6 +71,9 @@ export function PilotForm() {
 
   useEffect(() => {
     startedAt.current = Date.now();
+    // Pre-select from ?type=school|college|coaching|tutor (links from the audience pages).
+    const t = new URLSearchParams(window.location.search).get("type");
+    if (t && INSTITUTION_TYPES.some((x) => x.value === t)) setV((s) => (s.institutionType ? s : { ...s, institutionType: t }));
   }, []);
   useEffect(() => {
     if (status === "success" || status === "error") focusRef.current?.focus();
@@ -169,15 +175,34 @@ export function PilotForm() {
       </fieldset>
 
       <fieldset className="space-y-5">
-        <legend className="font-sans text-base font-semibold">Your institute</legend>
+        <legend className="font-sans text-base font-semibold">Your institution</legend>
+        <fieldset aria-describedby={err("institutionType") ? "pilot-institutionType-error" : undefined}>
+          <legend className="field-label">Type of institution</legend>
+          <div className="grid gap-2 sm:grid-cols-4">
+            {INSTITUTION_TYPES.map((t, i) => (
+              <label key={t.value} className={cn("flex min-h-11 cursor-pointer items-center gap-3 rounded-control border px-3 text-[0.9375rem]", v.institutionType === t.value ? "border-brand bg-brand-tint/50" : "border-line-strong hover:border-ink-muted")}>
+                <input
+                  id={i === 0 ? "pilot-institutionType" : undefined}
+                  type="radio"
+                  name="institutionType"
+                  className="h-4 w-4 accent-[rgb(var(--brand))]"
+                  checked={v.institutionType === t.value}
+                  onChange={() => set("institutionType", t.value)}
+                />
+                {t.label}
+              </label>
+            ))}
+          </div>
+          {err("institutionType") ? <p id="pilot-institutionType-error" className="field-error">{err("institutionType")}</p> : null}
+        </fieldset>
         <div className="grid gap-5 sm:grid-cols-2">
-          {text("instituteName", "Institute name", { auto: "organization" })}
+          {text("instituteName", "Institution name", { auto: "organization" })}
           {text("city", "City", { auto: "address-level2", max: 80 })}
           {select("country", "Country", COUNTRIES.map((c) => ({ value: c.code, label: c.name })))}
           {select("studentCount", "Number of students", INSTITUTE_SIZES)}
         </div>
         <fieldset aria-describedby={err("exams") ? "pilot-exams-error" : undefined}>
-          <legend className="field-label">Exams you prepare students for</legend>
+          <legend className="field-label">Exams or courses your students take</legend>
           <div className="grid gap-2 sm:grid-cols-3">
             {PILOT_EXAMS.map((ex, i) => {
               const checked = v.exams.includes(ex.value);

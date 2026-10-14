@@ -1,6 +1,7 @@
 import type {
   ContactTopic,
   InstituteSize,
+  InstitutionType,
   PilotExam,
   PilotRole,
   PriceComfort,
@@ -58,6 +59,7 @@ export interface PilotRecord {
   role: PilotRole;
   email: string;
   phone: string | null;
+  institutionType: InstitutionType;
   instituteName: string;
   city: string;
   country: string;

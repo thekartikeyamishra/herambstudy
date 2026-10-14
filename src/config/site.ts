@@ -55,23 +55,29 @@ export const siteConfig = {
 
 export const mainNav = [
   { href: "/how-it-works", label: "How it works" },
-  { href: "/for-institutes", label: "For institutes" },
-  { href: "/for-students", label: "For students" },
-  { href: "/resources", label: "Free resources" },
-  { href: "/trust", label: "Our approach" },
+  { href: "/for-institutes", label: "Coaching" },
+  { href: "/for-schools", label: "Schools" },
+  { href: "/for-colleges", label: "Colleges" },
+  { href: "/for-students", label: "Students" },
+  { href: "/resources", label: "Free tools" },
 ] as const;
 
 export const footerNav = {
   product: [
     { href: "/how-it-works", label: "How it works" },
-    { href: "/for-institutes", label: "For institutes" },
+    { href: "/for-institutes", label: "For coaching" },
+    { href: "/for-schools", label: "For schools" },
+    { href: "/for-colleges", label: "For colleges" },
     { href: "/for-students", label: "For students" },
+    { href: "/pilot", label: "Apply for a pilot" },
+    { href: "/pricing", label: "Plans & pricing" },
     { href: "/invite", label: "Request an invite" },
-    { href: "/pilot", label: "Institute pilot" },
   ],
   resources: [
+    { href: "/guide", label: "How to use Heramb" },
     { href: "/resources", label: "All resources" },
     { href: "/resources/class-test-analyser", label: "Class test analyser" },
+    { href: "/tracker", label: "Class progress tracker" },
     { href: "/resources/assessment-readiness-diagnostic", label: "Readiness diagnostic" },
     { href: "/resources/learning-gap-analysis", label: "Learning-gap analysis" },
     { href: "/resources/student-progress-report-template", label: "Progress report template" },

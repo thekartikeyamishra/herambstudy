@@ -54,6 +54,8 @@ export const AD_FORBIDDEN_PREFIXES = [
   "/refund-policy",
   "/offline",
   "/pilot",
+  "/r",
+  "/me",
   "/email",
   "/app",
   "/login",

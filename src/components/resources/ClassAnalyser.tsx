@@ -19,6 +19,10 @@ import {
   type ParseIssue,
 } from "@/lib/tools/classAnalysis";
 import { cn } from "@/lib/cn";
+import { ClassFollowUp } from "./ClassFollowUp";
+import { StudentLinks } from "./StudentLinks";
+import { TeachingSummary } from "./TeachingSummary";
+import { SaveToTracker } from "@/components/tracker/SaveToTracker";
 import { ToolShell, downloadText, useToolTracking } from "./ToolShell";
 
 const actionInfo = {
@@ -36,6 +40,8 @@ export function ClassAnalyser() {
   const [issues, setIssues] = useState<ParseIssue[]>([]);
   const [data, setData] = useState<Dataset | null>(null);
   const [result, setResult] = useState<ClassAnalysis | null>(null);
+  /** The exact text behind the current result (the box may be edited afterwards). */
+  const [analysedRaw, setAnalysedRaw] = useState("");
   const [fileError, setFileError] = useState("");
   const [mounted, setMounted] = useState(false);
   const resultsRef = useRef<HTMLDivElement>(null);
@@ -59,6 +65,7 @@ export function ClassAnalyser() {
       return;
     }
     setData(dataset);
+    setAnalysedRaw(source);
     setResult(analyseClass(dataset));
     onComplete();
     requestAnimationFrame(() => resultsRef.current?.focus());
@@ -239,6 +246,14 @@ export function ClassAnalyser() {
             <Button variant="secondary" onClick={() => downloadText("heramb-reteach-groups.csv", groupsToCsv(result))}>Download reteach groups (CSV)</Button>
             <Button variant="secondary" onClick={printReports}>Print individual student reports</Button>
           </div>
+
+          <TeachingSummary key={`sum-${analysedRaw.length}-${analysedRaw.slice(0, 40)}`} analysis={result} />
+
+          <StudentLinks key={`links-${analysedRaw.length}-${analysedRaw.slice(0, 40)}`} data={data} analysis={result} isSample={isSample} />
+
+          <SaveToTracker key={`save-${analysedRaw.length}-${analysedRaw.slice(0, 40)}`} raw={analysedRaw} isSample={isSample} />
+
+          <ClassFollowUp key={`${data.students.length}:${data.topics.map((t) => t.name).join("|")}`} first={data} firstIsSample={isSample} />
 
           <div className="mt-8 rounded-xl border border-brand/25 bg-brand-tint/40 p-5 text-[0.9375rem] text-ink-soft">
             <p className="font-semibold text-ink">Want this after every test, with mistake types and follow-up checks?</p>

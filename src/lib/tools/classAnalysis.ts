@@ -259,3 +259,117 @@ export function sampleCsv(): string {
   }
   return rows.join("\n");
 }
+
+/* ── Follow-up comparison (the VERIFY step) ──────────────────────────────── */
+
+export type TopicChange = {
+  name: string;
+  before: number;
+  after: number;
+  change: number;
+  verdict: "improved" | "declined" | "no_clear_change";
+  /** Students below 50% before who are at or above 50% after. */
+  closed: string[];
+  /** Students below 50% in both tests. */
+  stillBelow: string[];
+  /** Students at or above 50% before who fell below. */
+  slipped: string[];
+};
+
+export type ClassComparison = {
+  topics: TopicChange[];
+  matchedStudents: number;
+  unmatchedTopics: { onlyFirst: string[]; onlySecond: string[] };
+  unmatchedStudents: { onlyFirst: number; onlySecond: number };
+  totals: { closed: number; stillBelow: number; slipped: number };
+};
+
+const keyOf = (s: string) => s.trim().toLowerCase();
+
+/**
+ * Compares two class tests topic by topic, only for topics present in both and
+ * students present in both (matched by roll number / name, case-insensitive).
+ * Class-average changes within ±margin points are "no clear change".
+ */
+export function compareClasses(first: Dataset, second: Dataset, margin = 5): ClassComparison {
+  const m = Number.isFinite(margin) ? Math.min(Math.max(margin, 0), 50) : 5;
+  const a = analyseClass(first);
+  const b = analyseClass(second);
+
+  const bTopicIndex = new Map(second.topics.map((t, i) => [keyOf(t.name), i]));
+  const aTopicKeys = new Set(first.topics.map((t) => keyOf(t.name)));
+  const bStudents = new Map(b.students.map((s) => [keyOf(s.id), s]));
+  const aStudentKeys = new Set(a.students.map((s) => keyOf(s.id)));
+  const pairs = a.students
+    .map((s) => ({ id: s.id, before: s, after: bStudents.get(keyOf(s.id)) }))
+    .filter((p): p is { id: string; before: StudentSummary; after: StudentSummary } => Boolean(p.after));
+
+  const topics: TopicChange[] = [];
+  first.topics.forEach((t, ia) => {
+    const ib = bTopicIndex.get(keyOf(t.name));
+    if (ib === undefined) return;
+    const both = pairs
+      .map((p) => ({ id: p.id, x: p.before.percents[ia], y: p.after.percents[ib] }))
+      .filter((v): v is { id: string; x: number; y: number } => typeof v.x === "number" && typeof v.y === "number");
+    if (!both.length) return;
+    const before = Math.round(both.reduce((s, v) => s + v.x, 0) / both.length);
+    const after = Math.round(both.reduce((s, v) => s + v.y, 0) / both.length);
+    const change = after - before;
+    topics.push({
+      name: t.name,
+      before,
+      after,
+      change,
+      verdict: Math.abs(change) <= m ? "no_clear_change" : change > 0 ? "improved" : "declined",
+      closed: both.filter((v) => v.x < 50 && v.y >= 50).map((v) => v.id),
+      stillBelow: both.filter((v) => v.x < 50 && v.y < 50).map((v) => v.id),
+      slipped: both.filter((v) => v.x >= 50 && v.y < 50).map((v) => v.id),
+    });
+  });
+
+  const sum = (k: "closed" | "stillBelow" | "slipped") => topics.reduce((n, t) => n + t[k].length, 0);
+  return {
+    topics: topics.sort((x, y) => y.stillBelow.length - x.stillBelow.length || x.change - y.change),
+    matchedStudents: pairs.length,
+    unmatchedTopics: {
+      onlyFirst: first.topics.filter((t) => !bTopicIndex.has(keyOf(t.name))).map((t) => t.name),
+      onlySecond: second.topics.filter((t) => !aTopicKeys.has(keyOf(t.name))).map((t) => t.name),
+    },
+    unmatchedStudents: {
+      onlyFirst: a.students.filter((s) => !bStudents.has(keyOf(s.id))).length,
+      onlySecond: b.students.filter((s) => !aStudentKeys.has(keyOf(s.id))).length,
+    },
+    totals: { closed: sum("closed"), stillBelow: sum("stillBelow"), slipped: sum("slipped") },
+  };
+}
+
+export function comparisonToCsv(c: ClassComparison): string {
+  const label = { improved: "Improved", declined: "Declined", no_clear_change: "No clear change" };
+  const header = ["Topic", "Before %", "After %", "Change", "Verdict", "Gaps closed", "Still below 50%", "Slipped below 50%"];
+  const lines = c.topics.map((t) =>
+    [t.name, t.before, t.after, t.change, label[t.verdict], t.closed.join("; "), t.stillBelow.join("; "), t.slipped.join("; ")]
+      .map(csvCell)
+      .join(","),
+  );
+  return [header.join(","), ...lines].join("\n");
+}
+
+/** Fictional follow-up for the sample class: reteach on the two weakest topics helped most. */
+export function sampleFollowUpCsv(): string {
+  const rows = parseTable(sampleCsv());
+  const lift: Record<string, number> = { "Chemical bonding": 4, Equilibrium: 4, Thermodynamics: 1, Redox: -1 };
+  const header = rows[0]!;
+  const max = rows[1]!;
+  const out = [header.join(","), max.join(",")];
+  rows.slice(2).forEach((r, idx) => {
+    const cells = r.slice(1).map((v, i) => {
+      if (v === "AB") return idx % 2 === 0 ? String(Math.round(Number(max[i + 1]) * 0.5)) : v;
+      const topic = header[i + 1]!;
+      const m = Number(max[i + 1]);
+      const bump = (lift[topic] ?? 0) + ((idx * 7 + i) % 3) - 1;
+      return String(Math.min(m, Math.max(0, Number(v) + bump)));
+    });
+    out.push([r[0], ...cells].join(","));
+  });
+  return out.join("\n");
+}

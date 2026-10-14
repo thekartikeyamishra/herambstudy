@@ -6,7 +6,7 @@ import { PageHeader, SectionHeading } from "@/components/ui/Primitives";
 import { breadcrumbJsonLd, buildMetadata } from "@/lib/seo";
 
 export const metadata = buildMetadata({
-  title: "For coaching institutes and teachers",
+  title: "For coaching institutes: know what to reteach after every test",
   description:
     "See topic-level learning gaps across a batch, assign targeted practice and report verified progress — evaluated alongside your existing test series, without replacing your software.",
   path: "/for-institutes",
@@ -24,12 +24,12 @@ export default function ForInstitutesPage() {
     <>
       <JsonLd data={breadcrumbJsonLd([{ name: "Home", path: "/" }, { name: "For institutes", path: "/for-institutes" }])} />
       <PageHeader
-        eyebrow="For institutes & teachers"
+        eyebrow="For coaching institutes"
         title="Know what to reteach — and prove what improved."
         lede="Built for JEE and NEET coaching centres first: a class-wide view of learning gaps from the tests you already run, with targeted practice and verified follow-up."
       >
         <div className="flex flex-col gap-3 xs:flex-row">
-          <LinkButton href="/pilot" size="lg">Apply for a pilot</LinkButton>
+          <LinkButton href="/pilot?type=coaching" size="lg">Apply for a pilot</LinkButton>
           <LinkButton href="/resources/class-test-analyser" size="lg" variant="secondary">Try the free class analyser</LinkButton>
         </div>
       </PageHeader>
@@ -91,7 +91,7 @@ export default function ForInstitutesPage() {
             ))}
           </ol>
           <div className="mt-10 flex flex-wrap items-center gap-4">
-            <LinkButton href="/pilot" size="lg">Apply for a pilot</LinkButton>
+            <LinkButton href="/pilot?type=coaching" size="lg">Apply for a pilot</LinkButton>
             <p className="text-sm text-ink-muted">Pilot places are limited by our capacity to support them well, not by a deadline.</p>
           </div>
         </div>

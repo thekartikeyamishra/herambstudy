@@ -9,9 +9,14 @@ Invite-only launch site for an education platform that turns assessments into to
 
 | Area | Status |
 |---|---|
-| 13 public pages (home, how it works, institutes, students, resources, invite, pilot, about, contact, our approach, privacy, terms, refund) + 404, error, offline | Built, statically prerendered |
-| 6 free resources with working browser-only tools — including the flagship **class test analyser** (whole-batch gap map, reteach groups, bulk student reports) plus readiness diagnostic, learning-gap analyser, progress-report template, assessment comparer, mistake tally | Built and tested |
-| Institute pilot application (`/pilot`) with optional willingness-to-pay signal | Built and tested |
+| 18 public pages (home, how it works, coaching, schools, colleges, students, guide, tracker, pricing, resources, invite, pilot, about, contact, our approach, privacy, terms, refund) + 404, error, offline | Built, statically prerendered |
+| 6 free resources with working browser-only tools — including the flagship **class test analyser** (whole-batch gap map, reteach groups, bulk student reports, and a follow-up check showing which gaps closed) plus readiness diagnostic, learning-gap analyser, progress-report template, assessment comparer, mistake tally | Built and tested |
+| **Student report links** + student "My progress" (`/r`, `/me`): one personal link per student after every test, saved to the student's own device — the student habit loop | Built and tested |
+| **Class progress tracker** (`/tracker`): save tests per class in the browser; topic trends, repeating gaps grouped by topic, change since last test; JSON backup | Built and tested |
+| **Teaching summary + parent note** (AI optional, aggregate-only, cost-capped, rule-based fallback) | Built and tested |
+| **Student term reports** across all saved tests (tracker) | Built and tested |
+| **Plans, entitlements and `/pricing`** from a single config | Built and tested |
+| Pilot application for coaching institutes, schools, colleges and tutoring centres (`/pilot`) with optional willingness-to-pay signal | Built and tested |
 | Optional email: invite acknowledgement, double opt-in, one-click unsubscribe, owner alerts for pilot leads (Resend) | Built and tested, off until configured |
 | Invite request + contact forms → server validation → anti-spam → rate limits → Firestore | Built and tested |
 | Honest failure: no storage configured / storage error → 503 "nothing was saved" | Built and tested |
@@ -44,6 +49,7 @@ See [CHANGELOG.md](CHANGELOG.md) for what changed in each version.
 ## Documentation
 | Doc | Contents |
 |---|---|
+| [BUSINESS-MODEL](docs/BUSINESS-MODEL.md) | Ethical retention, free vs paid, pricing, metrics, AI cost strategy, roadmap |
 | [ARCHITECTURE](docs/ARCHITECTURE.md) | Structure, data model, request pipeline, SEO, PWA, analytics, design tokens, exit path |
 | [SETUP-WINDOWS](docs/SETUP-WINDOWS.md) | Install, Firebase, commands, waitlist admin, backups |
 | [DEPLOYMENT](docs/DEPLOYMENT.md) | Vercel or Firebase App Hosting, domain, verification, future payments |

@@ -112,7 +112,7 @@ async function main() {
       const r = d.data();
       return { id: d.id, ...r, exams: (r.exams ?? []).join("; "), createdAt: toIso(r.createdAt) };
     });
-    writeExport("pilots", rows, ["id", "createdAt", "status", "instituteName", "city", "country", "studentCount", "exams",
+    writeExport("pilots", rows, ["id", "createdAt", "status", "institutionType", "instituteName", "city", "country", "studentCount", "exams",
       "testFrequency", "startWindow", "priceComfort", "contactName", "role", "email", "phone", "currentTools", "notes"]);
     return;
   }

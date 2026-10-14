@@ -63,3 +63,12 @@ describe("web app manifest", () => {
     expect(sizes).toEqual(expect.arrayContaining(["192x192:any", "512x512:any", "512x512:maskable"]));
   });
 });
+
+describe("robots safety", () => {
+  it("never disallows a prefix of a public route", async () => {
+    const { nonIndexedPrefixes } = await import("@/config/routes");
+    for (const route of indexableRoutes()) {
+      for (const prefix of nonIndexedPrefixes) expect(route.path.startsWith(prefix)).toBe(false);
+    }
+  });
+});

@@ -20,6 +20,7 @@ const pilot = () => ({
   role: "owner",
   email: "Ravi@Example.com",
   phone: "+91 98765 43210",
+  institutionType: "coaching",
   instituteName: "Sunrise Classes",
   city: "Lucknow",
   country: "IN",
@@ -60,6 +61,7 @@ describe("POST /api/pilot", () => {
     expect(r.exams).toEqual(["jee_main", "neet"]);
     expect(r.status).toBe("new");
     expect(r.priceComfort).toBe("25_50");
+    expect(r.institutionType).toBe("coaching");
   });
 
   it("requires institute, city, at least one exam and consent", async () => {
@@ -67,6 +69,8 @@ describe("POST /api/pilot", () => {
     expect(res.status).toBe(422);
     const errs = (await res.json()).error.fieldErrors;
     expect(Object.keys(errs)).toEqual(expect.arrayContaining(["instituteName", "city", "exams", "privacyAcknowledged"]));
+    const noType = await handlePilot(post("/api/pilot", { ...pilot(), institutionType: "factory", email: "t@example.com" }));
+    expect((await noType.json()).error.fieldErrors.institutionType).toBeTruthy();
     expect(pilots.records).toHaveLength(0);
   });
 
@@ -203,7 +207,7 @@ describe("email templates", () => {
     const m = inviteAcknowledgement({ to: "a@b.co", name: "<b>x</b>", confirmUrl: null, unsubscribeUrl: null, oneClickUrl: null });
     expect(m.html).not.toContain("<b>x</b>");
     const alert = pilotOwnerAlert("o@b.co", {
-      contactName: "<img src=x>", role: "owner", email: "a@b.co", phone: null, instituteName: "I", city: "C", country: "IN",
+      contactName: "<img src=x>", role: "owner", email: "a@b.co", phone: null, institutionType: "school", instituteName: "I", city: "C", country: "IN",
       studentCount: "under_50", exams: ["neet"], testFrequency: "weekly", currentTools: null, startWindow: "exploring",
       priceComfort: null, notes: null, privacyNoticeVersion: "v", status: "new", createdAt: new Date(),
     });

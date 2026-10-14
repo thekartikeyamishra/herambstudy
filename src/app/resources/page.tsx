@@ -23,6 +23,16 @@ export default function ResourcesPage() {
       />
       <section className="section" aria-label="All resources">
         <div className="container">
+          <Link href="/tracker" className="card group mb-8 flex flex-col gap-3 border-brand/30 bg-brand-tint/30 p-6 transition-shadow hover:shadow-lift sm:flex-row sm:items-center sm:justify-between sm:p-7">
+            <div>
+              <Badge tone="brand">New · Interactive tool</Badge>
+              <h2 className="mt-3 font-sans text-xl font-semibold group-hover:text-brand">Class progress tracker</h2>
+              <p className="mt-1 max-w-2xl text-[0.9375rem] text-ink-soft">
+                Save every test for a class and see topic trends, gaps that keep repeating, and what changed since last time. No sign-up; data stays on your device.
+              </p>
+            </div>
+            <span className="shrink-0 font-medium text-brand">Open tracker →</span>
+          </Link>
           <ul className="grid gap-5 md:grid-cols-2">
             {resources.map((r) => (
               <li key={r.slug}>

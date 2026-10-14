@@ -249,6 +249,7 @@ export async function handlePilot(req: Request) {
       role: input.role,
       email,
       phone: input.phone,
+      institutionType: input.institutionType,
       instituteName: input.instituteName,
       city: input.city,
       country: input.country,

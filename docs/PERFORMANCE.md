@@ -52,3 +52,30 @@ After launch, use Search Console → Core Web Vitals and PageSpeed Insights on t
 | `/pilot`, `/resources/class-test-analyser` (desktop) | 100 | 100 | 100 | 0.6 s | 0 ms | 0 |
 
 Fix made: resource tools were all statically imported by the article registry, so every resource page shipped all six tools. Each tool is now its own chunk via `next/dynamic` (server rendering kept). Single Lighthouse runs in the 2-CPU sandbox vary by ±5 points; re-measure on the live site.
+
+## v0.3 additions (mobile, 14 Oct 2026)
+
+| Page | Perf | A11y | Best practices | LCP | TBT | CLS |
+|---|---|---|---|---|---|---|
+| `/for-schools` (3 runs) | 78–89 | 100 | 100 | 2.7–2.9 s | 320–670 ms | 0 |
+| `/guide` (2 runs) | 86–87 | 100 | 100 | 2.6–2.7 s | 390–430 ms | 0 |
+| `/for-institutes` (control, same session) | 95 | — | — | 2.1 s | 210 ms | 0 |
+
+Cause: the audience pages carry 18 FAQ answers, so the HTML document is ~102 KB vs ~70 KB and the main thread does ~150 ms more work. Accepted for now because the answers are the conversion content. If field data shows LCP above 2.5 s, move the FAQ below a "Show all questions" disclosure rendered only on interaction.
+
+## v0.4 (14 Oct 2026)
+| Page | Mode | Perf | A11y | Best practices | LCP | TBT | CLS |
+|---|---|---|---|---|---|---|---|
+| `/tracker` | mobile | 94 | 100 | 100 | 2.9 s | 130 ms | 0 |
+| `/tracker` | desktop | 100 | 100 | 100 | 0.6 s | 0 ms | 0 |
+
+## v0.5 (14 Oct 2026, mobile, same-session comparison)
+Lab conditions in the sandbox were slower in this session: the `/for-institutes` control page scored 80 (95 earlier). Measured side by side:
+
+| Page | Perf | LCP | TBT | CLS |
+|---|---|---|---|---|
+| `/for-institutes` (control) | 80 | 2.6 s | 660 ms | 0 |
+| `/r#…` (student report) | 78–80 | 2.0–2.8 s | 240–620 ms | 0 |
+| `/pricing` | 83–89 | 2.2–2.7 s | 420–520 ms | 0 |
+
+New pages are in line with existing pages. Accessibility and best practices: 100 on both. Re-measure on the live CDN.

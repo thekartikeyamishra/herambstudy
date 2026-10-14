@@ -179,7 +179,7 @@ export function inviteAcknowledgement(input: {
 
 export function pilotOwnerAlert(to: string, p: PilotRecord): OutgoingEmail {
   const rows: Array<[string, string]> = [
-    ["Institute", `${p.instituteName}, ${p.city} (${p.country})`],
+    ["Institution", `${p.instituteName}, ${p.city} (${p.country}) — ${p.institutionType}`],
     ["Contact", `${p.contactName} — ${p.role}`],
     ["Email", p.email],
     ["Phone", p.phone ?? "—"],
@@ -193,7 +193,7 @@ export function pilotOwnerAlert(to: string, p: PilotRecord): OutgoingEmail {
   ];
   return {
     to,
-    subject: `New pilot application: ${p.instituteName} (${p.city})`,
+    subject: `New ${p.institutionType} pilot application: ${p.instituteName} (${p.city})`,
     text: rows.map(([k, v]) => `${k}: ${v}`).join("\n"),
     html: layout(
       "New pilot application",

@@ -48,7 +48,7 @@ export function SiteHeader() {
           <Logo />
         </Link>
 
-        <nav aria-label="Main" className="hidden lg:block">
+        <nav aria-label="Main" className="hidden xl:block">
           <ul className="flex items-center gap-1">
             {mainNav.map((item) => (
               <li key={item.href}>
@@ -56,7 +56,7 @@ export function SiteHeader() {
                   href={item.href}
                   aria-current={isActive(item.href) ? "page" : undefined}
                   className={cn(
-                    "rounded-full px-3.5 py-2 text-[0.9375rem] text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink",
+                    "whitespace-nowrap rounded-full px-3.5 py-2 text-[0.9375rem] text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink",
                     isActive(item.href) && "bg-ink/5 font-medium text-ink",
                   )}
                 >
@@ -71,13 +71,13 @@ export function SiteHeader() {
           <div className="hidden sm:block">
             <LanguageMenu />
           </div>
-          <Link href="/invite" className={buttonClasses("primary", "md", "hidden sm:inline-flex")}>
+          <Link href="/invite" className={buttonClasses("primary", "md", "hidden whitespace-nowrap sm:inline-flex")}>
             Request an invite
           </Link>
           <button
             ref={toggleRef}
             type="button"
-            className="inline-flex h-11 w-11 items-center justify-center rounded-full text-ink hover:bg-ink/5 lg:hidden"
+            className="inline-flex h-11 w-11 items-center justify-center rounded-full text-ink hover:bg-ink/5 xl:hidden"
             aria-expanded={open}
             aria-controls={panelId}
             aria-label={open ? "Close menu" : "Open menu"}
@@ -94,7 +94,7 @@ export function SiteHeader() {
         </div>
       </div>
 
-      <div id={panelId} hidden={!open} className="border-t border-line bg-paper lg:hidden">
+      <div id={panelId} hidden={!open} className="border-t border-line bg-paper xl:hidden">
         <nav aria-label="Mobile" className="container py-4">
           <ul className="flex flex-col">
             {mainNav.map((item) => (

@@ -25,6 +25,14 @@
 | Email content | All user-supplied values HTML-escaped in templates | `escapeHtml` |
 | Privacy | Analytics only after consent, allow-listed events, email-like params dropped; tools run fully client-side | `lib/client/analytics.ts` |
 
+## AI (v0.5)
+| Concern | Control |
+|---|---|
+| Student data sent to a third party | Only aggregates (topic names, averages, counts) — schema strips anything else; names/roll numbers never included |
+| Prompt injection via topic names | Topic names capped at 80 chars, `<>{}` and backticks rejected; output is strictly schema-validated, never executed or rendered as HTML |
+| Cost abuse | Burst limit, per-visitor daily allowance, global daily cap, output token cap, cache |
+| Key exposure | `AI_API_KEY` is server-only; providers run only in the API route |
+
 ## Threat scenarios (v0.2 additions)
 | Threat | Mitigation | Residual risk |
 |---|---|---|

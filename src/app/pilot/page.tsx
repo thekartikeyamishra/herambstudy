@@ -7,12 +7,12 @@ import { breadcrumbJsonLd, buildMetadata } from "@/lib/seo";
 export const metadata = buildMetadata({
   title: "Apply for an institute pilot",
   description:
-    "Apply for a small, free-to-evaluate Heramb.study pilot for your JEE/NEET coaching institute: one batch, one subject, one full assess-to-verify cycle, reviewed together.",
+    "Apply for a small, free Heramb.study pilot for your coaching institute, school or college: one class, one subject, one full assess-to-verify cycle, reviewed together.",
   path: "/pilot",
 });
 
 const included = [
-  ["One batch, one subject", "Start small with tests you already run."],
+  ["One class, one subject", "Start small with tests you already run."],
   ["A full cycle in 4–6 weeks", "Gap map after a test, reteach groups, targeted practice and a follow-up check."],
   ["Reports you can share", "Topic-level progress for students and parents."],
   ["An honest review", "What changed, what didn't, and whether it's worth continuing."],
@@ -26,11 +26,11 @@ export default function PilotPage() {
         <div className="bg-grid pointer-events-none absolute inset-0 [mask-image:radial-gradient(ellipse_at_top,black,transparent_60%)]" aria-hidden="true" />
         <div className="container relative grid gap-12 py-12 sm:py-16 lg:grid-cols-[0.85fr_1.15fr] lg:gap-16 lg:py-20">
           <div>
-            <p className="eyebrow">For coaching institutes</p>
+            <p className="eyebrow">For coaching institutes, schools and colleges</p>
             <h1 className="mt-3 text-display-lg">Apply for a pilot</h1>
             <p className="lede mt-5">
-              We're running a small number of pilots with JEE and NEET coaching centres to learn what genuinely helps
-              teachers and students — before we build at scale.
+              We're running a small number of pilots — starting with JEE/NEET coaching centres, and now open to schools
+              and colleges — to learn what genuinely helps teachers and students before we build at scale.
             </p>
             <h2 className="mt-10 font-sans text-base font-semibold">What a pilot includes</h2>
             <ul className="mt-4 space-y-4">

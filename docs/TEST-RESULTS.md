@@ -1,4 +1,4 @@
-# Test results — v0.2.0, 12 October 2026
+# Test results — v0.5.0, 14 October 2026
 
 Environment: Linux sandbox, Node 22.22.0, npm 10.9.4, Chromium (Playwright build 1194). These are the actual results of commands run on this code.
 
@@ -6,11 +6,11 @@ Environment: Linux sandbox, Node 22.22.0, npm 10.9.4, Chromium (Playwright build
 |---|---|---|
 | TypeScript (strict) | `npm run typecheck` | **Pass** — 0 errors |
 | Lint | `npm run lint` | **Pass** — 0 errors, 0 warnings |
-| Unit / integration / component | `npm test` (Vitest 5) | **Pass** — 87/87 tests in 8 files |
-| Production build | `npm run build` | **Pass** — 29 routes; every page statically prerendered, only `/api/*` dynamic |
-| End-to-end | `npm run test:e2e` (desktop 1366px, tablet 820px, mobile 360px) | **Pass** — 132 passed, 6 skipped (single-viewport tests run once by design) |
-| Accessibility | axe-core WCAG 2.0/2.1/2.2 A+AA on 19 pages | **Pass** — 0 serious or critical violations |
-| Lighthouse | see `PERFORMANCE.md` | Perf 91–100 (mobile), 100 (desktop); A11y 100; Best practices 100 |
+| Unit / integration / component | `npm test` (Vitest 5) | **Pass** — 137/137 tests in 12 files |
+| Production build | `npm run build` | **Pass** — 36 routes; every page statically prerendered, only `/api/*` dynamic |
+| End-to-end | `npm run test:e2e` (desktop 1366px, tablet 820px, mobile 360px) | **Pass** — 183 passed, 6 skipped. Full run: 181 passed; 2 failures re-run green — a 404 caused by editing files during the dev-server run, and the 320 px all-pages test exceeding its 60 s budget (budget raised to 300 s, like the axe scan) |
+| Accessibility | axe-core WCAG 2.0/2.1/2.2 A+AA on 24 pages | **Pass** — 0 serious or critical violations |
+| Lighthouse | see `PERFORMANCE.md` | Perf 86–100 (mobile; audience pages 86–89), 100 (desktop); A11y 100; Best practices 100 |
 | Video | `cd video && npx tsc --noEmit` + full renders | **Pass** — 16:9, 9:16, 1:1 MP4s rendered |
 | Firestore rules | `npm run test:rules` | **Not run** — emulator download blocked in the build sandbox. Run locally. |
 | Dependency audit (production) | `npm audit --omit=dev` | **0 vulnerabilities** (after firebase-admin 14.5 upgrade + PostCSS override) |
@@ -37,6 +37,22 @@ Environment: Linux sandbox, Node 22.22.0, npm 10.9.4, Chromium (Playwright build
 - Pilot: valid application stored with normalised email/phone and de-duplicated exams; required-field errors; invalid phone; honest 503; owner alert sent only when email is configured (reply-to = applicant); E2E submission on 3 viewports.
 - Email: tokens bound to purpose and id, constant-time compare; acknowledgement sent once per new request (not on duplicates), confirm link only when opted in; provider failure still returns success; confirm refused for people who didn't opt in; RFC 8058 one-click unsubscribe without Origin; 503 when links aren't configured; HTML escaping in templates; E2E double-opt-in round trip including a wrong-purpose token.
 
+## Added in v0.3 (selected)
+- Follow-up comparison: case-insensitive matching of topics and students, unmatched items reported, gaps closed / still below / slipped per topic, margin applied to class-average change, formula-safe CSV, fictional follow-up shows real progress; E2E round trip on 3 viewports.
+- Pilot: institution type required and stored; `/for-schools` → `/pilot?type=school` pre-selects "School".
+- New pages `/for-schools`, `/for-colleges`, `/guide`: one H1, canonical, metadata, no horizontal scroll at 320 px, axe clean.
+
+## Added in v0.4 (selected)
+- Tracker logic: date ordering, case-insensitive topic series with gaps for missing topics, last change, persistent gaps that skip absences, last-two-test comparison.
+- Workspace storage: localStorage round trip, corrupt and wrong-version data, blocked storage, 4 MB guard, quota errors, backup validation (including re-parsing every stored test), merge without overwriting, ID/date formats.
+- E2E (desktop, tablet, mobile): demo class shows trends, repeating gaps and change summary and survives reload; save from analyser → open tracker → add second test → repeating gap and "1 gap closed"; invalid marks are rejected and nothing is saved.
+
+## Added in v0.5 (selected)
+- Student links: per-student reports with class averages and absences, UTF-8 round trip (Hindi names), tampered/oversized/wrong-version payloads rejected, focus topics, WhatsApp list and formula-safe CSV, stable ids; student history save/de-dupe/remove/topic history/corrupt/full/unavailable.
+- E2E: teacher creates links → student opens in a new tab → "Shared by" + focus topics → save → My progress shows topic history; invalid link explains itself; /r and /me carry noindex.
+- Plans: higher plans never remove features; free contains every available zero-cost tool including student links; public guarantees contain no unbacked promises (unit + E2E check on /pricing).
+- AI summary (from the earlier v0.5 work, now verified): aggregate-only input, provider fallback, quotas, cache; rule-based summary works with no AI configured.
+
 ## Issues found by testing and fixed
 1. Layout shift on desktop from web-font swap → `next/font/local`.
 2. Layout shift on mobile from root `loading.tsx` streaming → removed.
@@ -45,6 +61,9 @@ Environment: Linux sandbox, Node 22.22.0, npm 10.9.4, Chromium (Playwright build
 5. Moderate advisories in firebase-admin 13 → upgraded to 14.5; high PostCSS advisory bundled with Next → override to 8.5.29; critical Vitest/Tinypool advisory → Vitest 5.
 6. v0.2: every resource page shipped all six tools → per-tool code splitting.
 7. v0.2: axe scan exceeded the 60 s default timeout on a cold dev server → test budget raised (no violations).
+10. v0.5: `/pricing` publicly promised renewal reminders and 12 months of read-only access after cancelling — neither exists or was decided; removed and moved to BUSINESS-MODEL.md as proposals. A planned robots `Disallow: /r` would have blocked `/resources` (prefix match) — replaced with noindex and a guard test.
+9. v0.4: "Save to class" could save an unnamed class (validation ran after the save) → validation moved first; it also saved the textarea rather than the analysed data → now saves exactly what was analysed; "1 gaps" grammar fixed.
+8. v0.3: six-item nav wrapped labels at 1024 px → full nav from 1280 px, compact menu below, `whitespace-nowrap`.
 
 ## Remaining dev-only advisories
 Tailwind CSS 3 (chokidar/fast-glob/micromatch file-watching libraries), `eslint-config-next` 15, and the `firebase` client SDK used only by the rules tests. None ship to the browser or run in production; they process only this repository's own files. Fixing them needs a Tailwind 4 migration and a Next 16 upgrade — planned, not urgent.

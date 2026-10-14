@@ -69,7 +69,7 @@ scripts/                  icon generator, owner-only waitlist admin CLI
 | sourceCampaign / sourceLandingPage | string \| null | validated `utm_campaign` and same-origin referrer path |
 | duplicateAttempts | number | incremented on re-submission; original data never overwritten |
 
-### `pilotApplications/{autoId}` — contactName, role, email, phone, instituteName, city, country, studentCount, exams[], testFrequency, currentTools, startWindow, priceComfort, notes, privacyNoticeVersion, status (new → contacted → qualified → piloting → closed), createdAt.
+### `pilotApplications/{autoId}` — contactName, role, email, phone, institutionType (coaching | school | college | tutor), instituteName, city, country, studentCount, exams[], testFrequency, currentTools, startWindow, priceComfort, notes, privacyNoticeVersion, status (new → contacted → qualified → piloting → closed), createdAt.
 ### `contactMessages/{autoId}` — name, email, topic, message, privacyNoticeVersion, status, createdAt.
 ### `rateLimits/{sha256(salt|scope|key)}` — count, windowStart, expiresAt (TTL policy deletes).
 
@@ -133,3 +133,29 @@ Tokens are `HMAC-SHA256(EMAIL_TOKEN_SECRET, purpose:requestId)` (base64url), com
 ## Class test analyser
 
 `src/lib/tools/classAnalysis.ts` (pure, unit-tested) + `components/resources/ClassAnalyser.tsx`. Parses pasted/uploaded tables in the browser (≤ 500 students, 40 topics, 1 MB), never uploads data, and prints per-student reports through a body-level portal with print-only CSS.
+
+### Follow-up check (v0.3)
+`compareClasses(first, second, margin)` matches topics and students case-insensitively, compares only what appears in both tests, and reports per topic: class average before/after (verdict uses the ±margin), students whose gap closed (< 50% → ≥ 50%), still below 50%, and slipped (≥ 50% → < 50%). Unmatched topics/students are listed, never silently dropped.
+
+### Audience pages (v0.3)
+`/for-schools` and `/for-colleges` share `components/marketing/AudiencePage.tsx`; content lives in `content/audiences.tsx` (shared FAQ + audience-specific items). `/for-institutes` remains the coaching page.
+
+## Class progress tracker (v0.4)
+
+- **Storage:** `lib/client/workspace.ts` — one localStorage key `heramb.workspace.v1` holding `{version: 1, classes: [{id, name, subject, createdAt, tests: [{id, name, date, raw, savedAt}]}]}`. Tests keep the raw pasted text and are re-parsed on load, so analysis improvements apply to old data. Zod-validated on load and import; corrupt data is ignored (not deleted) until the user saves; writes over 4 MB, quota errors and blocked storage return explicit errors.
+- **Logic:** `lib/tools/tracker.ts` — `trackClass(tests)` sorts by date, builds per-topic series (case-insensitive topic matching), finds persistent gaps (consecutive most-recent attempts below 50%, absences skipped), and reuses `compareClasses` for the last two tests.
+- **UI:** `components/tracker/*` — `useWorkspace` hook (load after mount, persist on update, cross-tab `storage` sync), `Tracker`, `SaveToTracker`.
+- **Why local-only:** zero student data on our servers for free users (no DPDP processing liability, no storage cost). Cloud sync and sharing are the natural paid upgrade.
+
+## Plans and AI (v0.5)
+
+- `config/plans.ts` defines plans, features (with availability) and guarantees; `lib/entitlements.ts` exposes `canUse(plan, feature)`, `aiDailyAllowance(plan)` and `formatPrice`. When accounts arrive, every gate calls `canUse` — no plan logic scattered in components.
+- `lib/ai/summary.ts` (shared): `toSummaryInput` builds the aggregate-only payload in the browser; `ruleBasedSummary` is the zero-cost fallback; `buildPrompt` produces a compact grounded prompt; `parseModelOutput` strictly validates JSON.
+- `lib/ai/providers.ts` (server): `getProvider(env)` → Anthropic Messages API or any OpenAI-compatible endpoint, or `null` (AI off).
+- `lib/server/aiHandler.ts` → `POST /api/ai/summary`: origin check → burst limit → Zod validation → cache → per-visitor daily quota + global cap (Firestore limiter when available) → provider call with timeout → strict parse → cache; any failure returns the rule-based summary with an explanatory note (HTTP 200).
+
+## Student report links (v0.5)
+- `lib/tools/studentReport.ts` — compact versioned payload `{v,i,t,d,s,n,p,a}` → JSON → base64url (UTF-8 safe), placed after `#` in `/r#…`. Zod-validated on decode (lengths, ranges, max 40 topics, 12 KB cap); React escapes every field. `reportId` (FNV-1a) de-duplicates saved reports.
+- `lib/client/studentStore.ts` — student history in localStorage `heramb.student.v1` (max 200 reports), per-topic history across tests.
+- Pages `/r` (report) and `/me` (my progress): client-only rendering, `noindex`, analytics never loaded, ads forbidden.
+- Threats: links can be forwarded (documented to teachers; roll numbers recommended); "Shared by" is sender-typed and labelled unverified; no server ever sees the payload.

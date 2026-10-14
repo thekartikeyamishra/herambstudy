@@ -12,10 +12,15 @@ export const staticRoutes: RouteEntry[] = [
   { path: "/", priority: 1, changeFrequency: "weekly" },
   { path: "/how-it-works", priority: 0.8, changeFrequency: "monthly" },
   { path: "/for-institutes", priority: 0.8, changeFrequency: "monthly" },
+  { path: "/for-schools", priority: 0.8, changeFrequency: "monthly" },
+  { path: "/for-colleges", priority: 0.8, changeFrequency: "monthly" },
   { path: "/for-students", priority: 0.8, changeFrequency: "monthly" },
+  { path: "/guide", priority: 0.7, changeFrequency: "monthly" },
   { path: "/resources", priority: 0.9, changeFrequency: "weekly" },
+  { path: "/tracker", priority: 0.8, changeFrequency: "monthly" },
   { path: "/invite", priority: 0.7, changeFrequency: "monthly" },
   { path: "/pilot", priority: 0.8, changeFrequency: "monthly" },
+  { path: "/pricing", priority: 0.7, changeFrequency: "monthly" },
   { path: "/about", priority: 0.5, changeFrequency: "monthly" },
   { path: "/trust", priority: 0.5, changeFrequency: "monthly" },
   { path: "/contact", priority: 0.4, changeFrequency: "yearly" },
@@ -36,5 +41,9 @@ export function indexableRoutes(): RouteEntry[] {
   ];
 }
 
-/** Never indexed and disallowed for crawlers (robots.txt is not access control). */
+/**
+ * Disallowed for crawlers (robots.txt is not access control).
+ * Robots rules match by PREFIX, so never add short paths like "/r" here — it would also
+ * block "/resources". Personal pages (/r, /me) are excluded with a noindex meta tag instead.
+ */
 export const nonIndexedPrefixes = ["/api/", "/offline", "/email/"];

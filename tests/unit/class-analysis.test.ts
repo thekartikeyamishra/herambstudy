@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   analyseClass,
+  compareClasses,
+  comparisonToCsv,
+  sampleFollowUpCsv,
   buildDataset,
   groupsToCsv,
   parseTable,
@@ -91,5 +94,46 @@ describe("analyseClass", () => {
     const csv = groupsToCsv(a);
     expect(csv.split("\n")[1]).toContain("Reteach to whole class");
     expect(csv).toContain("R1; R2; R5");
+  });
+});
+
+describe("compareClasses (follow-up check)", () => {
+  const ds = (csv: string) => buildDataset(parseTable(csv)).dataset!;
+  const first = ds(["Roll,Bonding,Redox,Old topic", "MAX,10,10,10", "R1,3,9,5", "R2,4,8,5", "R3,8,2,5", "R4,9,9,5"].join("\n"));
+  const second = ds(["roll,bonding,Redox,New topic", "MAX,10,10,10", "r1,6,9,5", "R2,4,9,5", "R3,8,6,5", "R5,9,9,5"].join("\n"));
+  const c = compareClasses(first, second, 5);
+
+  it("matches topics and students case-insensitively and reports what didn't match", () => {
+    expect(c.matchedStudents).toBe(3);
+    expect(c.topics.map((t) => t.name).sort()).toEqual(["Bonding", "Redox"]);
+    expect(c.unmatchedTopics).toEqual({ onlyFirst: ["Old topic"], onlySecond: ["New topic"] });
+    expect(c.unmatchedStudents).toEqual({ onlyFirst: 1, onlySecond: 1 });
+  });
+
+  it("counts gaps closed, still open and slipped per topic", () => {
+    const bonding = c.topics.find((t) => t.name === "Bonding")!;
+    expect(bonding.closed).toEqual(["R1"]);
+    expect(bonding.stillBelow).toEqual(["R2"]);
+    const redox = c.topics.find((t) => t.name === "Redox")!;
+    expect(redox.closed).toEqual(["R3"]);
+    expect(c.totals).toEqual({ closed: 2, stillBelow: 1, slipped: 0 });
+  });
+
+  it("applies the margin to class-average change", () => {
+    const bonding = c.topics.find((t) => t.name === "Bonding")!; // 50 → 60 over matched R1–R3
+    expect(bonding.before).toBe(50);
+    expect(bonding.after).toBe(60);
+    expect(bonding.verdict).toBe("improved");
+    expect(compareClasses(first, second, 20).topics.find((t) => t.name === "Bonding")!.verdict).toBe("no_clear_change");
+  });
+
+  it("exports a formula-safe CSV and the fictional follow-up parses and shows progress", () => {
+    expect(comparisonToCsv(c).split("\n")[0]).toContain("Gaps closed");
+    const followUp = buildDataset(parseTable(sampleFollowUpCsv()));
+    expect(followUp.issues).toEqual([]);
+    const sample = compareClasses(ds(sampleCsv()), followUp.dataset!, 5);
+    expect(sample.matchedStudents).toBe(24);
+    expect(sample.totals.closed).toBeGreaterThan(0);
+    expect(sample.topics.find((t) => t.name === "Equilibrium")!.verdict).toBe("improved");
   });
 });

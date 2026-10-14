@@ -8,7 +8,12 @@ const PUBLIC_PAGES = [
   "/",
   "/how-it-works",
   "/for-institutes",
+  "/for-schools",
+  "/for-colleges",
   "/for-students",
+  "/guide",
+  "/tracker",
+  "/pricing",
   "/resources",
   "/resources/class-test-analyser",
   "/resources/assessment-readiness-diagnostic",
@@ -58,6 +63,7 @@ test.describe("public pages", () => {
 
   test("320px-wide screens have no horizontal scrolling", async ({ page }, info) => {
     test.skip(info.project.name !== "mobile", "mobile only");
+    test.setTimeout(300_000); // visits every public page; each compiles on first visit in dev
     await page.setViewportSize({ width: 320, height: 640 });
     for (const path of PUBLIC_PAGES) {
       await page.goto(path);
@@ -87,7 +93,7 @@ test.describe("home page", () => {
       await toggle.click();
       const mobileNav = page.getByRole("navigation", { name: "Mobile" });
       await expect(mobileNav).toBeVisible();
-      await mobileNav.getByRole("link", { name: "Free resources" }).click();
+      await mobileNav.getByRole("link", { name: "Free tools" }).click();
       await expect(page).toHaveURL(/\/resources$/);
       await expect(mobileNav).toBeHidden();
     }
@@ -282,7 +288,8 @@ test.describe("institute pilot", () => {
     await page.getByLabel("Your name").fill("Ravi Kumar");
     await page.getByLabel("Your role").selectOption("owner");
     await page.getByLabel("Work email").fill(`pilot-${Date.now()}@example.com`);
-    await page.getByLabel("Institute name").fill("Sunrise Classes");
+    await page.getByLabel("Coaching institute").check();
+    await page.getByLabel("Institution name").fill("Sunrise Classes");
     await page.getByLabel("City").fill("Lucknow");
     await page.getByLabel("Number of students").selectOption("50_200");
     await page.getByLabel("NEET").check();
@@ -298,7 +305,7 @@ test.describe("institute pilot", () => {
     await page.goto("/pilot");
     await page.getByRole("button", { name: "Apply for a pilot" }).click();
     await expect(page.getByText("Please tell us your name.")).toBeVisible();
-    await expect(page.getByText("Please choose at least one exam.")).toBeVisible();
+    await expect(page.getByText("Please choose at least one.")).toBeVisible();
   });
 });
 
@@ -330,5 +337,151 @@ test.describe("email preferences", () => {
     await page.goto(`/email/unsubscribe?id=${id}&t=${sign("unsubscribe")}`);
     await page.getByRole("button", { name: "Unsubscribe from updates" }).click();
     await expect(page.getByTestId("email-action-result")).toContainText("unsubscribed");
+  });
+});
+
+test.describe("v0.3 additions", () => {
+  test("class analyser verifies a follow-up test", async ({ page }) => {
+    await page.goto("/resources/class-test-analyser");
+    await page.getByRole("button", { name: "Load a fictional class" }).click();
+    await page.getByRole("button", { name: "Compare with a follow-up test" }).click();
+    await page.getByRole("button", { name: "Load the fictional follow-up" }).click();
+    const r = page.getByTestId("followup-results");
+    await expect(r).toBeVisible();
+    await expect(r).toContainText("Gaps closed");
+    await expect(r).toContainText("Equilibrium");
+  });
+
+  test("school page links to a pilot pre-set to school", async ({ page }) => {
+    await page.goto("/for-schools");
+    await page.getByRole("link", { name: "Apply for a free pilot" }).click();
+    await expect(page).toHaveURL(/\/pilot\?type=school$/);
+    await expect(page.getByLabel("School", { exact: true })).toBeChecked();
+  });
+
+  test("pilot requires an institution type", async ({ page }) => {
+    await page.goto("/pilot");
+    await page.getByRole("button", { name: "Apply for a pilot" }).click();
+    await expect(page.getByText("Please choose your type of institution.")).toBeVisible();
+  });
+});
+
+test.describe("class progress tracker", () => {
+  test("demo class shows trends, repeating gaps and change since last test", async ({ page }) => {
+    await page.goto("/tracker");
+    await page.getByRole("button", { name: "Load a fictional class" }).click();
+    await expect(page.getByTestId("tracker-trends")).toContainText("Equilibrium");
+    await expect(page.getByTestId("tracker-persistent")).toContainText(/\d+ students?/);
+    await expect(page.getByTestId("tracker-latest")).toContainText(/gaps? closed/);
+    // Persists across reloads (stored in this browser).
+    await page.reload();
+    await expect(page.getByTestId("tracker-trends")).toBeVisible();
+  });
+
+  test("save a test from the analyser, then add another in the tracker", async ({ page }) => {
+    await page.goto("/resources/class-test-analyser");
+    await page.getByLabel("Or paste from Excel / Google Sheets").fill("Roll,Algebra,Geometry\nMAX,10,10\nR1,3,8\nR2,4,9");
+    await page.getByRole("button", { name: "Analyse class" }).click();
+    await page.getByRole("button", { name: "Save this test to a class" }).click();
+    await page.getByLabel("Class name").fill("Class 9 B");
+    await page.getByLabel("Test name").fill("Unit 1");
+    await page.getByLabel("Test date").fill("2026-09-01");
+    await page.getByRole("button", { name: "Save test" }).click();
+    await page.getByTestId("tracker-saved").getByRole("link").click();
+    await expect(page).toHaveURL(/\/tracker\?class=/);
+    await expect(page.getByRole("heading", { name: "Class 9 B" })).toBeVisible();
+
+    await page.getByText("+ Add a test").click();
+    await page.getByLabel("Test name").fill("Unit 2");
+    await page.getByLabel("Test date").fill("2026-10-01");
+    await page.getByLabel(/^Marks/).fill("Roll,Algebra,Geometry\nMAX,10,10\nR1,4,8\nR2,7,9");
+    await page.getByRole("button", { name: "Save test" }).click();
+    await expect(page.getByTestId("tracker-persistent")).toContainText("R1");
+    await expect(page.getByTestId("tracker-latest")).toContainText("1 gap closed");
+  });
+
+  test("rejects invalid marks without saving", async ({ page }) => {
+    await page.goto("/tracker");
+    await page.getByLabel("Class name").fill("Empty class");
+    await page.getByRole("button", { name: "Create class" }).click();
+    await page.getByText("+ Add a test").click();
+    await page.getByLabel("Test name").fill("Bad");
+    await page.getByLabel(/^Marks/).fill("Roll,A\nR1,abc");
+    await page.getByRole("button", { name: "Save test" }).click();
+    await expect(page.getByRole("alert").filter({ hasText: "isn't a number" })).toBeVisible();
+    await expect(page.getByTestId("tracker-trends")).toHaveCount(0);
+  });
+});
+
+test.describe("v0.5 additions", () => {
+  test("teaching summary works without AI configured (rule-based)", async ({ page }) => {
+    await page.goto("/resources/class-test-analyser");
+    await page.getByRole("button", { name: "Load a fictional class" }).click();
+    await page.getByRole("button", { name: "Write my summary" }).click();
+    const s = page.getByTestId("teaching-summary");
+    // The dev server compiles the summary API route on first use.
+    await expect(s).toContainText("Note for parents", { timeout: 30_000 });
+    await expect(s).toContainText("Made from your numbers");
+  });
+
+  test("tracker shows student term reports for the demo class", async ({ page }) => {
+    await page.goto("/tracker");
+    await page.getByRole("button", { name: "Load a fictional class" }).click();
+    const t = page.getByTestId("term-reports");
+    await expect(t).toContainText("Print all 24 term reports");
+    await page.getByLabel("Preview student").selectOption("R08");
+    await expect(page.getByTestId("term-preview")).toContainText("R08");
+    await expect(page.getByTestId("term-preview")).toContainText("Focus next");
+  });
+
+  test("pricing shows honest prices, planned badges and the export promise", async ({ page }) => {
+    await page.goto("/pricing");
+    await expect(page.getByText("Free forever")).toBeVisible();
+    await expect(page.getByText("Founding price on request").first()).toBeVisible();
+    await expect(page.getByText("Planned", { exact: true }).first()).toBeVisible();
+    await expect(page.getByText(/export it \(CSV \/ JSON\)/i).first()).toBeVisible();
+    await expect(page.getByText(/read-only access|renewal reminders/i)).toHaveCount(0);
+  });
+});
+
+test.describe("student report links", () => {
+  test("teacher creates links; student opens, saves and sees progress", async ({ page, context }) => {
+    await page.goto("/resources/class-test-analyser");
+    await page.getByLabel("Or paste from Excel / Google Sheets").fill("Roll,Algebra,Geometry\nMAX,10,10\nR1,3,8\nR2,9,4");
+    await page.getByRole("button", { name: "Analyse class" }).click();
+    await page.getByRole("button", { name: "Create student report links" }).click();
+    await page.getByLabel("Your institute / school name").fill("Sunrise Classes");
+    await page.getByLabel("Test name", { exact: true }).fill("Unit 1");
+    await page.getByLabel("Test date", { exact: true }).fill("2026-09-01");
+    const links = page.getByTestId("student-links");
+    await expect(links).toContainText("Copy all 2 links");
+
+    const href = await links.getByRole("link", { name: /Preview/ }).first().getAttribute("href");
+    expect(href).toMatch(/\/r#[A-Za-z0-9_-]+$/);
+    const student = await context.newPage();
+    await student.goto(href!);
+    const report = student.getByTestId("student-report");
+    await expect(report).toContainText("Shared by Sunrise Classes");
+    await expect(report).toContainText("Unit 1");
+    await expect(report).toContainText("Start with Algebra");
+    await student.getByRole("button", { name: "Save to my progress" }).click();
+    await expect(student.getByTestId("report-saved")).toBeVisible();
+
+    await student.goto("/me");
+    await expect(student.getByTestId("topic-history")).toContainText("Algebra");
+    await expect(student.getByTestId("progress")).toContainText("Reports saved");
+  });
+
+  test("an incomplete or tampered link explains itself", async ({ page }) => {
+    await page.goto("/r#not-a-real-report");
+    await expect(page.getByTestId("report-invalid")).toBeVisible();
+  });
+
+  test("personal pages are not indexable", async ({ page }) => {
+    await page.goto("/r");
+    await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
+    await page.goto("/me");
+    await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
+    await expect(page.getByTestId("progress-empty")).toBeVisible();
   });
 });

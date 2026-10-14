@@ -38,6 +38,7 @@ Items marked **(you)** need your accounts, identity or decisions — they can't 
 ## Content & growth
 - [ ] Review every resource page once more for accuracy; update `reviewed` dates in `src/content/resources.ts` if edited.
 - [ ] Render the launch video (`cd video; npm run render:all`) and add captions file where you post it.
+- [ ] Share `/for-schools` and `/for-colleges` with school principals and college HODs alongside a live class-analyser demo; send them to `/pilot?type=school` or `?type=college`.
 - [ ] Start the interview and concierge-pilot experiments in `RESEARCH.md`. Use the class test analyser with each institute's real (anonymised) test as the opening demo, then point them to `/pilot`.
 
 ## Explicitly NOT at launch
