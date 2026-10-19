@@ -15,11 +15,14 @@ import {
   todayIso,
   type StoredClass,
 } from "@/lib/client/workspace";
-import { buildDataset, checkTextSize, LIMITS, parseTable, sampleCsv, sampleFollowUpCsv, type ParseIssue } from "@/lib/tools/classAnalysis";
+import { buildDataset, LIMITS, parseTable, sampleCsv, sampleFollowUpCsv, type ParseIssue } from "@/lib/tools/classAnalysis";
 import { trackClass } from "@/lib/tools/tracker";
 import { cn } from "@/lib/cn";
 import { downloadText } from "@/components/resources/ToolShell";
 import { TermReports } from "./TermReports";
+import { InstituteBar } from "@/components/founding/InstituteBar";
+import { recordUsage } from "@/lib/client/usage";
+import { markDone, textHash } from "@/lib/client/onceStore";
 import { useWorkspace } from "./useWorkspace";
 
 const tone = { secure: "bg-good-tint text-good", developing: "bg-warn-tint text-warn", gap: "bg-gap-tint text-gap" } as const;
@@ -84,6 +87,8 @@ export function Tracker() {
   if (status === "loading") return <div className="min-h-[50vh]" aria-busy="true" />;
 
   return (
+    <>
+    <InstituteBar />
     <div className="grid gap-8 lg:grid-cols-[17rem_1fr]">
       <aside className="space-y-6" aria-label="Your classes">
         <div>
@@ -180,6 +185,7 @@ export function Tracker() {
         )}
       </div>
     </div>
+    </>
   );
 }
 
@@ -375,14 +381,14 @@ function AddTestForm({ onAdd, disabled }: { onAdd: (t: StoredClass["tests"][numb
     setError("");
     if (!name.trim()) return setError("Please name this test.");
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return setError("Please choose the test date.");
-    const tooBig = checkTextSize(raw);
-    if (tooBig) return setError(tooBig);
     const { dataset, issues: found } = buildDataset(parseTable(raw));
     setIssues(found);
     if (!dataset) return;
     const ok = onAdd({ id: newId(), name: name.trim().slice(0, 80), date, raw, savedAt: new Date().toISOString() });
     if (ok) {
       track("tracker_test_saved", { outcome: "tracker" });
+      if (markDone("heramb.analysed.v1", textHash(raw))) recordUsage("analysis_real");
+      recordUsage("tracker_saved");
       setName("");
       setRaw("");
       setIssues([]);

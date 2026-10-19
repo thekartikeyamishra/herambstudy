@@ -28,6 +28,22 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // Founding institutes: contact details, usage counters (days/{date}), hashed device
+    // ids (devices/{hash}) and value feedback. Server-only; codes are not passwords for
+    // the database — the browser never reads these documents directly.
+    match /institutes/{code}/{rest=**} {
+      allow read, write: if false;
+    }
+    match /institutes/{code} {
+      allow read, write: if false;
+    }
+
+    // Programme counters (founding seats taken, public totals). Exposed only through
+    // /api/stats/public, and only once there is enough real activity.
+    match /meta/{doc} {
+      allow read, write: if false;
+    }
+
     // Default deny for everything else.
     match /{document=**} {
       allow read, write: if false;

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Logo } from "@/components/brand/Logo";
 import { InstallControl } from "@/components/pwa/InstallControl";
 import { StoreBadges } from "@/components/pwa/StoreBadges";
+import { devToolsEnabled } from "@/config/devtools";
 import { footerNav, siteConfig } from "@/config/site";
 
 const columns = [
@@ -67,6 +68,11 @@ export function SiteFooter() {
                 Contact us
               </Link>
             )}
+            {devToolsEnabled() ? (
+              <Link href="/dev" className="rounded-full border border-white/25 px-3 py-1 text-white/80 hover:text-white" data-testid="dev-link">
+                Developer console
+              </Link>
+            ) : null}
             {socials.map((s) => (
               <a key={s.label} href={s.href} rel="noopener me" target="_blank" className="hover:text-white">
                 {s.label}

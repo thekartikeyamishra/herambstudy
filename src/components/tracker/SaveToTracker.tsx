@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { MAX_CLASSES, MAX_TESTS_PER_CLASS, newId, todayIso } from "@/lib/client/workspace";
 import { track } from "@/lib/client/analytics";
 import { useWorkspace } from "./useWorkspace";
+import { recordUsage } from "@/lib/client/usage";
 
 const NEW = "__new__";
 
@@ -50,6 +51,7 @@ export function SaveToTracker({ raw, isSample }: { raw: string; isSample: boolea
     if (err) return setError(err);
     setSaved(savedTo.current);
     track("tracker_test_saved", { outcome: target === NEW ? "new_class" : "existing_class" });
+    if (!isSample) recordUsage("tracker_saved");
   }
 
   if (status === "loading") return null;

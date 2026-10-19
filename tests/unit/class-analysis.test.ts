@@ -137,3 +137,39 @@ describe("compareClasses (follow-up check)", () => {
     expect(sample.topics.find((t) => t.name === "Equilibrium")!.verdict).toBe("improved");
   });
 });
+
+describe("regressions found in v0.6 edge-case review", () => {
+  const issuesOf = (csv: string) => buildDataset(parseTable(csv)).issues.map((i) => i.message).join(" | ");
+
+  it("accepts only decimal numbers — never hex, exponents or numbers with spaces inside", () => {
+    for (const cell of ["0x10", "1e3", "Infinity", "1 5", "1 000", "."]) {
+      expect(issuesOf(`Roll,A\nMAX,2000\nR1,${cell}`), cell).toMatch(/isn't a number/);
+    }
+    const ok = buildDataset(parseTable('Roll,A,B,C,D\nMAX,20,20,20,20\nR1,+5,"7,5",15 / 20,70 %')).dataset!;
+    expect(ok.students[0]!.scores).toEqual([5, 7.5, 15, 14]);
+  });
+
+  it("recognises common labels for the maximum-marks row", () => {
+    for (const label of ["MAX", "Max marks", "Maximum Marks", "Full marks", "Full Marks:", "Out of", "Out of:", "Total marks", "Marks out of"]) {
+      const d = buildDataset(parseTable(`Roll,A\n${label},20\nR1,15`)).dataset!;
+      expect(d.assumedPercent, label).toBe(false);
+      expect(d.students.map((s) => s.id), label).toEqual(["R1"]);
+    }
+  });
+
+  it("warns when a MAX row is not directly under the header", () => {
+    const r = buildDataset(parseTable("Roll,A\nR1,15\nMAX,20"));
+    expect(r.dataset?.assumedPercent).toBe(true);
+    expect(r.warnings.join(" ")).toMatch(/looks like maximum marks/);
+  });
+
+  it("explains percentages above 100% without MAX-row advice", () => {
+    const msg = issuesOf("Roll,A\nMAX,20\nR1,120%");
+    expect(msg).toContain("more than 100%");
+    expect(msg).not.toMatch(/MAX row|read as the maximum/);
+  });
+
+  it("warns about rows without roll numbers", () => {
+    expect(buildDataset(parseTable("Roll,A\n,50\nR2,60")).warnings.join(" ")).toMatch(/no roll number/);
+  });
+});

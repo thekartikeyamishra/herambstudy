@@ -6,26 +6,27 @@ export const PRIVACY_NOTICE_VERSION = "2026-10-12";
 export const MARKETING_CONSENT_VERSION = "2026-10-12";
 
 const CONTROL_CHARS = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/;
+/** Line breaks (incl. Unicode separators) and bidi overrides that can spoof displayed text. */
+const LINE_BREAKS = /[\r\n\u2028\u2029]/;
+const BIDI_CONTROLS = /[\u202A-\u202E\u2066-\u2069]/;
 
-const cleanText = (max: number) =>
+/**
+ * Single-line text by default. Names, institute names and cities end up in email
+ * subjects, CSV exports and admin views, so line breaks are refused there
+ * (prevents header/subject injection and broken exports). Pass multiline=true for
+ * free-text notes.
+ */
+const cleanText = (max: number, multiline = false) =>
   z
     .string()
     .trim()
     .max(max, `Please keep this under ${max} characters.`)
-    .refine((v) => !CONTROL_CHARS.test(v), "Contains unsupported characters.");
+    .refine((v) => !CONTROL_CHARS.test(v.replace(/\t/g, " ")) && !BIDI_CONTROLS.test(v), "Contains unsupported characters.")
+    .refine((v) => multiline || !LINE_BREAKS.test(v), "Please keep this on one line.");
 
-/** Single-line text: also rejects line breaks and tabs (these values can end up in email subjects). */
-const singleLine = (max: number) =>
-  cleanText(max).refine((v) => !/[\r\n\t]/.test(v), "Please keep this on one line.");
-
-const optionalSingleLine = (max: number) =>
+const optionalText = (max: number, multiline = false) =>
   z
-    .union([singleLine(max), z.literal(""), z.null(), z.undefined()])
-    .transform((v) => (typeof v === "string" && v.length > 0 ? v : null));
-
-const optionalText = (max: number) =>
-  z
-    .union([cleanText(max), z.literal(""), z.null(), z.undefined()])
+    .union([cleanText(max, multiline), z.literal(""), z.null(), z.undefined()])
     .transform((v) => (typeof v === "string" && v.length > 0 ? v : null));
 
 export const emailSchema = z
@@ -102,13 +103,13 @@ const antiSpam = {
 
 export const inviteRequestSchema = z
   .object({
-    name: optionalSingleLine(80),
+    name: optionalText(80),
     email: emailSchema,
     role: z.enum(roleValues, { errorMap: () => ({ message: "Please choose the role that fits you best." }) }),
     country: z.enum(COUNTRY_CODES, { errorMap: () => ({ message: "Please choose your country." }) }),
     useCase: z.enum(useCaseValues, { errorMap: () => ({ message: "Please choose your main use case." }) }),
-    useCaseNote: optionalText(500),
-    instituteName: optionalSingleLine(120),
+    useCaseNote: optionalText(500, true),
+    instituteName: optionalText(120),
     instituteSize: z
       .union([z.enum(instituteSizeValues), z.literal(""), z.null(), z.undefined()])
       .transform((v) => (v ? v : null)),
@@ -142,7 +143,7 @@ const contactTopicValues = CONTACT_TOPICS.map((t) => t.value) as [ContactTopic, 
 
 export const contactMessageSchema = z
   .object({
-    name: singleLine(80).pipe(z.string().min(1, "Please tell us your name.")),
+    name: cleanText(80).pipe(z.string().min(1, "Please tell us your name.")),
     email: emailSchema,
     topic: z.enum(contactTopicValues, { errorMap: () => ({ message: "Please choose a topic." }) }),
     message: z
@@ -230,15 +231,15 @@ const valuesOf = <T extends ReadonlyArray<{ value: string }>>(list: T) =>
 
 export const pilotApplicationSchema = z
   .object({
-    contactName: singleLine(80).pipe(z.string().min(1, "Please tell us your name.")),
+    contactName: cleanText(80).pipe(z.string().min(1, "Please tell us your name.")),
     role: z.enum(valuesOf(PILOT_ROLES), { errorMap: () => ({ message: "Please choose your role." }) }),
     email: emailSchema,
     phone: z
       .union([z.string().trim().regex(/^\+?[0-9][0-9 ()-]{6,18}$/, "Please enter a valid phone number, or leave it blank."), z.literal(""), z.null(), z.undefined()])
       .transform((v) => (v ? v.replace(/[\s()-]/g, "") : null)),
     institutionType: z.enum(valuesOf(INSTITUTION_TYPES), { errorMap: () => ({ message: "Please choose your type of institution." }) }),
-    instituteName: singleLine(120).pipe(z.string().min(2, "Please enter your institution's name.")),
-    city: singleLine(80).pipe(z.string().min(2, "Please enter your city.")),
+    instituteName: cleanText(120).pipe(z.string().min(2, "Please enter your institution's name.")),
+    city: cleanText(80).pipe(z.string().min(2, "Please enter your city.")),
     country: z.enum(COUNTRY_CODES, { errorMap: () => ({ message: "Please choose your country." }) }),
     studentCount: z.enum(valuesOf(INSTITUTE_SIZES), { errorMap: () => ({ message: "Please choose an approximate size." }) }),
     exams: z
@@ -247,12 +248,12 @@ export const pilotApplicationSchema = z
       .max(PILOT_EXAMS.length)
       .transform((a) => Array.from(new Set(a))),
     testFrequency: z.enum(valuesOf(TEST_FREQUENCIES), { errorMap: () => ({ message: "Please choose how often you test." }) }),
-    currentTools: optionalSingleLine(300),
+    currentTools: optionalText(300),
     startWindow: z.enum(valuesOf(START_WINDOWS), { errorMap: () => ({ message: "Please choose when you'd like to start." }) }),
     priceComfort: z
       .union([z.enum(valuesOf(PRICE_COMFORT)), z.literal(""), z.null(), z.undefined()])
       .transform((v) => (v ? v : null)),
-    notes: optionalText(1000),
+    notes: optionalText(1000, true),
     privacyAcknowledged: z.literal(true, {
       errorMap: () => ({ message: "Please confirm you've read how we use your details." }),
     }),
@@ -270,3 +271,35 @@ export const emailActionSchema = z
     t: z.string().regex(/^[A-Za-z0-9_-]{20,100}$/),
   })
   .strip();
+
+/* ── Founding institute registration ─────────────────────────────────────── */
+
+export const JOIN_SOURCES = ["meeting", "self", "referral"] as const;
+export type JoinSource = (typeof JOIN_SOURCES)[number];
+
+export const instituteJoinSchema = z
+  .object({
+    instituteName: cleanText(120).pipe(z.string().min(2, "Please enter the institute's name.")),
+    city: cleanText(80).pipe(z.string().min(2, "Please enter the city.")),
+    institutionType: z.enum(valuesOf(INSTITUTION_TYPES), { errorMap: () => ({ message: "Please choose the type of institution." }) }),
+    contactName: cleanText(80).pipe(z.string().min(1, "Please enter a contact name.")),
+    role: z.enum(valuesOf(PILOT_ROLES), { errorMap: () => ({ message: "Please choose a role." }) }),
+    phone: z
+      .union([z.string().trim().regex(/^\+?[0-9][0-9 ()-]{6,18}$/, "Please enter a valid phone / WhatsApp number, or leave it blank."), z.literal(""), z.null(), z.undefined()])
+      .transform((v) => (v ? v.replace(/[\s()-]/g, "") : null)),
+    email: z
+      .union([emailSchema, z.literal(""), z.null(), z.undefined()])
+      .transform((v) => (typeof v === "string" && v.length ? normalizeEmail(v) : null)),
+    weeklyDigest: z.boolean().default(false),
+    source: z.enum(JOIN_SOURCES).optional().catch(undefined),
+    privacyAcknowledged: z.literal(true, {
+      errorMap: () => ({ message: "Please confirm you've read how we use these details." }),
+    }),
+    ...antiSpam,
+  })
+  .strip()
+  .refine((v) => Boolean(v.phone || v.email), { message: "Please add a phone / WhatsApp number or an email so we can help you.", path: ["phone"] })
+  .refine((v) => !v.weeklyDigest || Boolean(v.email), { message: "The weekly summary needs an email address.", path: ["email"] });
+
+export type InstituteJoinInput = z.input<typeof instituteJoinSchema>;
+export type InstituteJoin = z.output<typeof instituteJoinSchema>;

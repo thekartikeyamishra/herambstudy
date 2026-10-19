@@ -43,8 +43,11 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en-IN" className={`${fontSans.variable} ${fontDisplay.variable}`}>
-      <body className="flex min-h-dvh flex-col">
+    // suppressHydrationWarning: browser extensions (e.g. Scribe, Grammarly) add attributes to <html>
+    // and <body> before React loads. This ignores attribute differences on these two elements only —
+    // real mismatches in the page content are still reported.
+    <html lang="en-IN" className={`${fontSans.variable} ${fontDisplay.variable}`} suppressHydrationWarning>
+      <body className="flex min-h-dvh flex-col" suppressHydrationWarning>
         <JsonLd data={organizationJsonLd()} />
         <JsonLd data={websiteJsonLd()} />
         <SiteHeader />

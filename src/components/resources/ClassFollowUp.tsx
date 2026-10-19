@@ -1,11 +1,12 @@
 "use client";
 
+import { recordUsage } from "@/lib/client/usage";
+
 import { useRef, useState, type ChangeEvent } from "react";
 import { Button } from "@/components/ui/Button";
 import { Badge, FictionalDataLabel } from "@/components/ui/Primitives";
 import {
   buildDataset,
-  checkTextSize,
   compareClasses,
   comparisonToCsv,
   LIMITS,
@@ -34,9 +35,8 @@ export function ClassFollowUp({ first, firstIsSample }: { first: Dataset; firstI
   const [fileError, setFileError] = useState("");
   const ref = useRef<HTMLDivElement>(null);
 
-  function run(source = text) {
-    const tooBig = checkTextSize(source);
-    const { dataset, issues: found } = tooBig ? { dataset: null, issues: [{ row: 1, message: tooBig }] } : buildDataset(parseTable(source));
+  function run(source = text, isSampleRun = isSample) {
+    const { dataset, issues: found } = buildDataset(parseTable(source));
     setIssues(found);
     if (!dataset) return setResult(null);
     const c = compareClasses(first, dataset, Number(margin));
@@ -46,6 +46,7 @@ export function ClassFollowUp({ first, firstIsSample }: { first: Dataset; firstI
       return;
     }
     setResult(c);
+    if (!firstIsSample && !isSampleRun) recordUsage("followup_run");
     requestAnimationFrame(() => ref.current?.focus());
   }
 
@@ -59,7 +60,7 @@ export function ClassFollowUp({ first, firstIsSample }: { first: Dataset; firstI
     const content = await file.text();
     setText(content);
     setIsSample(false);
-    run(content);
+    run(content, false);
   }
 
   if (!open) {
@@ -82,7 +83,7 @@ export function ClassFollowUp({ first, firstIsSample }: { first: Dataset; firstI
       </p>
       <div className="mt-4 flex flex-wrap items-end gap-2">
         {firstIsSample ? (
-          <Button variant="secondary" onClick={() => { const s = sampleFollowUpCsv(); setText(s); setIsSample(true); run(s); }}>
+          <Button variant="secondary" onClick={() => { const s = sampleFollowUpCsv(); setText(s); setIsSample(true); run(s, true); }}>
             Load the fictional follow-up
           </Button>
         ) : null}

@@ -7,7 +7,7 @@
 | 3 | Medium | No real keyword volume, Trends data or user interviews yet | `RESEARCH.md` lists candidates as unverified and the steps to measure them |
 | 4 | Low | CSP permits `'unsafe-inline'` scripts | Trade-off for static rendering; see `SECURITY.md` |
 | 5 | Low | Email needs a Resend account and verified domain; contact-form replies are manual | Built-in acknowledgement, double opt-in, unsubscribe and pilot alerts activate once configured. No newsletter-sending tool is included — export confirmed subscribers and use a provider with unsubscribe handling |
-| 6 | Low | No admin web UI | Waitlist is managed with the owner CLI (`npm run waitlist`); deliberate — avoids building auth for one user |
+| 6 | Low | Owner dashboard (`/admin`) covers founding institutes only | Single owner password (no multi-user admin). Invites and pilots are still managed with `npm run waitlist` |
 | 7 | Low | Anti-spam is honeypot + timing + rate limits | Add Cloudflare Turnstile if automated abuse appears |
 | 8 | Low | Only English content; Hindi/German shown as planned | Add full translations before hreflang |
 | 9 | Low | Light theme only | Dark mode not in v1 scope |
@@ -26,10 +26,14 @@
 | 22 | Medium | No accounts or billing yet | Plans and gates exist in config; paid features stay "planned" until accounts, cloud storage and payments are built (see BUSINESS-MODEL.md roadmap) |
 | 23 | Low | AI quotas are per IP until accounts exist | Shared networks (a school's Wi-Fi) share one allowance; the global cap bounds total cost |
 | 24 | Low | Anthropic API details not re-verified against live docs in this session | Endpoint/version header follow the long-standing Messages API; the model is configurable via `AI_MODEL`. Verify at docs.claude.com before enabling |
-| 25 | Info | `/pricing` lists "12 months read-only after cancel" | A commitment for the owner to confirm or remove in `GUARANTEES` |
-| 22 | Medium | Student report links can be forwarded | Anyone with a link sees that report. Mitigation: guidance to send in personal chats and use roll numbers; future paid delivery adds sign-in |
-| 23 | Low | "Shared by" name is not verified | Labelled as sender-typed on the report page; verified institute branding comes with paid accounts |
-| 24 | Low | Very long topic lists make long links | Capped at 40 topics (~2–4 KB links), which WhatsApp handles |
-| 25 | Low | "75%" cells are converted against the topic maximum | Mixing marks and percentages in one column is allowed; teachers should keep one format per column |
-| 26 | Low | Sheets with marks written as "12/20" are rejected | Error message explains; split marks and maximum into a MAX row |
-| 27 | Info | Dev hub shows the email outbox as plain text | HTML version of emails is not rendered in the hub; use a real Resend test address to see final HTML |
+| 25 | Medium | Student report links can be forwarded | Anyone with a link sees that report. Mitigation: guidance to send in personal chats and use roll numbers; future paid delivery adds sign-in |
+| 26 | Low | "Shared by" name is not verified | Labelled as sender-typed on the report page; verified institute branding comes with paid accounts |
+| 27 | Low | Very long topic lists make long links | Capped at 40 topics; typical links are under 1,000 characters, the largest (40 long Hindi topic names) about 13,000 — within the 20,000 limit and what WhatsApp and browsers handle |
+| 28 | Low | Developer console reads test files from the repository folder | On a Vercel preview the files may be absent; the console says so and the downloadable test kit has them |
+| 29 | Info | Hindi text appears as “[Hindi text]” in the PDF testing guide | The PDF font has no Devanagari; the CSV checklist and the test files keep the real text |
+| 30 | Medium | Founding-programme counts can be inflated by anyone holding an institute's code | Counts are evidence of activity, not an audit; rate-limited and capped per batch. Treat spikes with caution; a future signed-in teacher account removes this |
+| 31 | Low | Student counts only for links created after the teacher connected | The code travels inside the report link (`c`); older links count nowhere |
+| 32 | Low | Photo/PDF import needs an AI provider and can misread handwriting | Off (501) until `AI_PROVIDER` is set; imported marks are always shown for checking before analysis; PDFs need Anthropic |
+| 33 | Low | Google Sheet import needs "Anyone with the link — Viewer" | No Google sign-in by design; private sheets can be downloaded as .xlsx and uploaded instead |
+| 34 | Low | Old binary `.xls` files aren't read | Users are asked to save as .xlsx or CSV |
+| 35 | Info | Weekly digest depends on Vercel Cron | On another host, call `GET /api/cron/digest` weekly with `Authorization: Bearer $CRON_SECRET` |

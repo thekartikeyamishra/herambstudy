@@ -29,7 +29,7 @@ beforeEach(async () => {
   });
 });
 
-const collections = ["inviteRequests", "contactMessages", "pilotApplications", "rateLimits", "anythingElse"];
+const collections = ["inviteRequests", "contactMessages", "pilotApplications", "rateLimits", "institutes", "institutes/HRB-2345-6789/days", "institutes/HRB-2345-6789/devices", "meta", "anythingElse"];
 
 describe.each([
   ["unauthenticated visitor", () => env.unauthenticatedContext()],
@@ -45,6 +45,14 @@ describe.each([
   it.each(collections)("cannot write to %s", async (name) => {
     const db = ctx().firestore();
     await assertFails(setDoc(doc(db, `${name}/x`), { status: "invited" }));
+  });
+
+  it("cannot read founding institutes, their usage or programme counters", async () => {
+    const db = ctx().firestore();
+    await assertFails(getDocs(collection(db, "institutes")));
+    await assertFails(getDoc(doc(db, "institutes/HRB-2345-6789")));
+    await assertFails(getDocs(collection(db, "institutes/HRB-2345-6789/days")));
+    await assertFails(getDoc(doc(db, "meta/founding")));
   });
 
   it("cannot modify or delete an existing invite request", async () => {

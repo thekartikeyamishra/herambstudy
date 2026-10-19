@@ -1,5 +1,6 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { after } from "next/server";
+import { DEV_EMAIL_TOKEN_SECRET, devToolsEnabled } from "@/config/devtools";
 import { absoluteUrl, siteConfig } from "@/config/site";
 import type { PilotRecord } from "./types";
 
@@ -15,8 +16,8 @@ import type { PilotRecord } from "./types";
 
 export type EmailConfig = {
   sending: boolean;
-  /** Development only: emails are captured in memory and shown at /dev instead of being sent. */
-  outbox: boolean;
+  /** Developer tools only: emails are captured in the dev inbox instead of being sent. */
+  devOutbox: boolean;
   tokens: boolean;
   from: string | null;
   replyTo: string | null;
@@ -26,15 +27,16 @@ export type EmailConfig = {
 const EMAIL_RE = /^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/;
 
 export function emailConfig(): EmailConfig {
-  const outbox = process.env.NODE_ENV !== "production" && process.env.EMAIL_DEV_OUTBOX === "true";
-  const from = process.env.EMAIL_FROM?.trim() || (outbox ? "Heramb.study (dev) <dev@heramb.test>" : null);
+  const from = process.env.EMAIL_FROM?.trim() || null;
   const fromOk = Boolean(from && (EMAIL_RE.test(from) || /^[^<>]+<[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+>$/.test(from)));
   const owner = process.env.OWNER_NOTIFICATION_EMAIL?.trim() || null;
   const reply = siteConfig.contactEmail;
+  const sending = Boolean(process.env.RESEND_API_KEY?.trim()) && fromOk;
+  const dev = devToolsEnabled();
   return {
-    sending: (Boolean(process.env.RESEND_API_KEY?.trim()) && fromOk) || outbox,
-    outbox,
-    tokens: (process.env.EMAIL_TOKEN_SECRET ?? "").length >= 32,
+    sending,
+    devOutbox: !sending && dev,
+    tokens: tokenSecret() !== null,
     from: fromOk ? from : null,
     replyTo: reply,
     ownerAlerts: owner && EMAIL_RE.test(owner) ? owner : null,
@@ -43,11 +45,24 @@ export function emailConfig(): EmailConfig {
 
 /* ── Signed links ───────────────────────────────────────────────────────── */
 
-export type TokenPurpose = "confirm" | "unsubscribe";
+export type TokenPurpose = "confirm" | "unsubscribe" | "digest";
+
+/** The configured secret, or the fixed dev secret when developer tools are on. */
+function tokenSecret(): string | null {
+  const configured = process.env.EMAIL_TOKEN_SECRET ?? "";
+  if (configured.length >= 32) return configured;
+  return devToolsEnabled() ? DEV_EMAIL_TOKEN_SECRET : null;
+}
+
+/** True when emails will either be sent or captured in the dev inbox. */
+export function emailActive(): boolean {
+  const c = emailConfig();
+  return c.sending || c.devOutbox;
+}
 
 export function signToken(purpose: TokenPurpose, id: string): string | null {
-  const secret = process.env.EMAIL_TOKEN_SECRET ?? "";
-  if (secret.length < 32) return null;
+  const secret = tokenSecret();
+  if (!secret) return null;
   return createHmac("sha256", secret).update(`${purpose}:${id}`).digest("base64url");
 }
 
@@ -62,7 +77,7 @@ export function verifyToken(purpose: TokenPurpose, id: string, token: string): b
 export function actionUrl(purpose: TokenPurpose, id: string): string | null {
   const t = signToken(purpose, id);
   if (!t) return null;
-  const path = purpose === "confirm" ? "/email/confirm" : "/email/unsubscribe";
+  const path = purpose === "confirm" ? "/email/confirm" : purpose === "digest" ? "/email/digest" : "/email/unsubscribe";
   return absoluteUrl(`${path}?id=${id}&t=${t}`);
 }
 
@@ -77,25 +92,26 @@ export type OutgoingEmail = {
   replyTo?: string | null;
 };
 
-export type OutboxEntry = OutgoingEmail & { at: string; from: string };
-const og = globalThis as typeof globalThis & { __herambOutbox?: OutboxEntry[] };
+export type CapturedEmail = OutgoingEmail & { id: number; capturedAt: string };
+const g = globalThis as typeof globalThis & { __herambDevOutbox?: CapturedEmail[] };
 
-/** Development outbox (most recent first). Always empty in production. */
-export function devOutbox(): OutboxEntry[] {
-  return process.env.NODE_ENV === "production" ? [] : (og.__herambOutbox ?? []);
+/** Developer inbox (in memory, newest first). Empty whenever developer tools are off. */
+export function devOutbox(): CapturedEmail[] {
+  return devToolsEnabled() ? (g.__herambDevOutbox ?? []) : [];
 }
 export function clearDevOutbox(): void {
-  og.__herambOutbox = [];
+  g.__herambDevOutbox = [];
 }
 
 export async function deliver(message: OutgoingEmail): Promise<boolean> {
   const cfg = emailConfig();
-  if (!cfg.sending || !cfg.from) return false;
-  if (process.env.NODE_ENV !== "production" && cfg.outbox) {
-    // Development: capture instead of sending. Takes priority over Resend so dev never emails real people by accident.
-    og.__herambOutbox = [{ ...message, at: new Date().toISOString(), from: cfg.from }, ...(og.__herambOutbox ?? [])].slice(0, 50);
+  if (!cfg.sending && cfg.devOutbox) {
+    const box = (g.__herambDevOutbox ??= []);
+    box.unshift({ ...message, id: (box[0]?.id ?? 0) + 1, capturedAt: new Date().toISOString() });
+    box.length = Math.min(box.length, 50);
     return true;
   }
+  if (!cfg.sending || !cfg.from) return false;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 8000);
   try {
@@ -142,7 +158,7 @@ export function escapeHtml(s: string): string {
   return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 }
 
-function layout(title: string, bodyHtml: string): string {
+export function layout(title: string, bodyHtml: string): string {
   return `<!doctype html><html lang="en"><body style="margin:0;background:#FAF8F4;font-family:Segoe UI,Roboto,Arial,sans-serif;color:#0E1528">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:32px 16px">
 <table role="presentation" width="100%" style="max-width:560px;background:#ffffff;border:1px solid #E4DFD4;border-radius:16px">
@@ -152,7 +168,7 @@ function layout(title: string, bodyHtml: string): string {
 </td></tr></table></body></html>`;
 }
 
-const button = (href: string, label: string) =>
+export const button = (href: string, label: string) =>
   `<p style="margin:20px 0"><a href="${escapeHtml(href)}" style="display:inline-block;background:#4A3CCE;color:#fff;text-decoration:none;padding:12px 20px;border-radius:999px;font-weight:600">${escapeHtml(label)}</a></p>`;
 
 export function inviteAcknowledgement(input: {

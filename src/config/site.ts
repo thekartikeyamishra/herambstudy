@@ -69,6 +69,7 @@ export const footerNav = {
     { href: "/for-schools", label: "For schools" },
     { href: "/for-colleges", label: "For colleges" },
     { href: "/for-students", label: "For students" },
+    { href: "/founding", label: "Founding institutes" },
     { href: "/pilot", label: "Apply for a pilot" },
     { href: "/pricing", label: "Plans & pricing" },
     { href: "/invite", label: "Request an invite" },

@@ -4,6 +4,7 @@ import { SampleReport } from "@/components/marketing/SampleReport";
 import { FaqList, FeatureCard, Icon, InviteBand, Roadmap } from "@/components/marketing/Sections";
 import { WorkflowDiagram } from "@/components/marketing/WorkflowDiagram";
 import { LinkButton } from "@/components/ui/Button";
+import { LiveProof } from "@/components/founding/LiveProof";
 import { Badge, SectionHeading } from "@/components/ui/Primitives";
 import { siteConfig } from "@/config/site";
 import { homeFaqs } from "@/content/home";
@@ -64,12 +65,17 @@ export default function HomePage() {
               <LinkButton href="/how-it-works" size="lg" variant="secondary">Explore how it works</LinkButton>
             </div>
             <p className="mt-5 text-sm text-ink-muted">{siteConfig.tagline} {siteConfig.supportingLine}</p>
+            <p className="mt-3 text-sm">
+              <Link href="/founding" className="font-medium text-brand underline underline-offset-4">Run a coaching institute? Join the founding programme →</Link>
+            </p>
           </div>
           <div className="animate-rise [animation-delay:120ms]">
             <HeroPreview />
           </div>
         </div>
       </section>
+
+      <LiveProof variant="band" />
 
       {/* Problem */}
       <section className="section border-y border-line bg-paper-raised" aria-labelledby="problem-title">

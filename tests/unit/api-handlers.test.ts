@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { __setBackendForTests } from "@/lib/server/backend";
 import { CONTACT_SUCCESS_MESSAGE, handleContact, handleInvite, INVITE_SUCCESS_MESSAGE } from "@/lib/server/handlers";
 import { requestIdForEmail } from "@/lib/server/http";
-import { MemoryContactStore, MemoryInviteStore, MemoryPilotStore, MemoryRateLimiter } from "@/lib/server/memoryBackend";
+import { MemoryContactStore, MemoryInstituteStore, MemoryInviteStore, MemoryPilotStore, MemoryRateLimiter } from "@/lib/server/memoryBackend";
 import type { InviteStore } from "@/lib/server/types";
 
 const ORIGIN = "http://localhost:3000";
@@ -38,7 +38,7 @@ let contacts: MemoryContactStore;
 beforeEach(() => {
   invites = new MemoryInviteStore();
   contacts = new MemoryContactStore();
-  __setBackendForTests({ kind: "memory", invites, contacts, pilots: new MemoryPilotStore(), limiter: new MemoryRateLimiter() });
+  __setBackendForTests({ kind: "memory", invites, contacts, pilots: new MemoryPilotStore(), institutes: new MemoryInstituteStore(), limiter: new MemoryRateLimiter() });
   vi.spyOn(console, "warn").mockImplementation(() => {});
   vi.spyOn(console, "error").mockImplementation(() => {});
 });
@@ -95,7 +95,7 @@ describe("POST /api/invite", () => {
       createIfAbsent: async () => { throw new Error("boom"); },
       updateMarketing: async () => "not_found",
     };
-    __setBackendForTests({ kind: "memory", invites: failing, contacts, pilots: new MemoryPilotStore(), limiter: new MemoryRateLimiter() });
+    __setBackendForTests({ kind: "memory", invites: failing, contacts, pilots: new MemoryPilotStore(), institutes: new MemoryInstituteStore(), limiter: new MemoryRateLimiter() });
     const res = await handleInvite(req(validInvite()));
     expect(res.status).toBe(503);
     expect((await res.json()).ok).toBe(false);

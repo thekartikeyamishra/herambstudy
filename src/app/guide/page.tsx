@@ -142,7 +142,15 @@ export default function GuidePage() {
           <ul className="mt-8 grid gap-5 md:grid-cols-2">
             {teacherTools.map((t) => <ToolCard key={t.href} t={t} />)}
           </ul>
-          <div className="card mt-8 p-6">
+          <div className="card mt-8 border-brand/30 bg-brand-tint/30 p-6">
+            <h3 className="font-sans text-lg font-semibold">Coaching institute? Get a founding code</h3>
+            <p className="mt-2 text-[0.9375rem] text-ink-soft">
+              Two minutes, no accounts and no payment. Your teachers' analyses and your students' report links count towards
+              your institute's dashboard, and founding institutes get a founding discount on any future paid plan.
+            </p>
+            <Link href="/founding" className="mt-4 inline-block font-medium text-brand underline underline-offset-4">Join the founding programme →</Link>
+          </div>
+          <div className="card mt-6 p-6">
             <h3 className="font-sans text-lg font-semibold">Apply for a free pilot</h3>
             <p className="mt-2 text-[0.9375rem] text-ink-soft">
               One class, one subject, 4–6 weeks, using tests you already run. Fill in a 3-minute form and we reply by

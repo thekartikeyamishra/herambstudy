@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type ChangeEvent } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
@@ -9,7 +9,6 @@ import { statusFor, statusLabel } from "@/content/sampleData";
 import {
   analyseClass,
   buildDataset,
-  checkTextSize,
   groupsToCsv,
   LIMITS,
   parseTable,
@@ -25,6 +24,10 @@ import { StudentLinks } from "./StudentLinks";
 import { TeachingSummary } from "./TeachingSummary";
 import { SaveToTracker } from "@/components/tracker/SaveToTracker";
 import { ToolShell, downloadText, useToolTracking } from "./ToolShell";
+import { ImportPanel, tidyTable, type ImportResult } from "./ImportPanel";
+import { InstituteBar } from "@/components/founding/InstituteBar";
+import { recordUsage } from "@/lib/client/usage";
+import { markDone, textHash } from "@/lib/client/onceStore";
 
 const actionInfo = {
   whole_class: { label: "Reteach to whole class", tone: "gap" as const },
@@ -39,11 +42,14 @@ export function ClassAnalyser() {
   const [text, setText] = useState("");
   const [isSample, setIsSample] = useState(false);
   const [issues, setIssues] = useState<ParseIssue[]>([]);
+  const [warnings, setWarnings] = useState<string[]>([]);
   const [data, setData] = useState<Dataset | null>(null);
   const [result, setResult] = useState<ClassAnalysis | null>(null);
   /** The exact text behind the current result (the box may be edited afterwards). */
   const [analysedRaw, setAnalysedRaw] = useState("");
-  const [fileError, setFileError] = useState("");
+  const [importNotes, setImportNotes] = useState<string[]>([]);
+  const [needsReview, setNeedsReview] = useState(false);
+  const [tidy, setTidy] = useState<{ text: string; notes: string[] } | null>(null);
   const [mounted, setMounted] = useState(false);
   const resultsRef = useRef<HTMLDivElement>(null);
   const issuesRef = useRef<HTMLDivElement>(null);
@@ -56,37 +62,44 @@ export function ClassAnalyser() {
     return () => window.removeEventListener("afterprint", clear);
   }, []);
 
-  function analyse(source = text) {
-    const tooBig = checkTextSize(source);
-    const { dataset, issues: found } = tooBig ? { dataset: null, issues: [{ row: 1, message: tooBig }] } : buildDataset(parseTable(source));
+  function analyse(source = text, sample = isSample) {
+    const { dataset, issues: found, warnings: notes } = buildDataset(parseTable(source));
     setIssues(found);
+    setWarnings(notes);
+    setNeedsReview(false);
     if (!dataset) {
       setData(null);
       setResult(null);
+      // A raw export (title rows, names, totals…) often fails; offer a one-tap clean-up.
+      const t = tidyTable(source);
+      setTidy(t.changed ? { text: t.text, notes: t.notes } : null);
       requestAnimationFrame(() => issuesRef.current?.focus());
       return;
     }
+    setTidy(null);
     setData(dataset);
     setAnalysedRaw(source);
     setResult(analyseClass(dataset));
+    // The same marks analysed again (re-clicks, edits of the name only) count once per device.
+    if (sample) recordUsage("analysis_sample");
+    else if (markDone("heramb.analysed.v1", textHash(source))) recordUsage("analysis_real");
     onComplete();
     requestAnimationFrame(() => resultsRef.current?.focus());
   }
 
-  async function onFile(e: ChangeEvent<HTMLInputElement>) {
-    setFileError("");
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
-    if (file.size > LIMITS.bytes) return setFileError("That file is larger than 1 MB. Please split the class or remove extra columns.");
-    if (!/\.(csv|tsv|txt)$/i.test(file.name)) {
-      return setFileError("Please choose a .csv file. In Excel or Google Sheets use File → Download / Save as → CSV.");
-    }
-    onStart();
-    const content = await file.text();
-    setText(content);
+  function onImported(r: ImportResult) {
+    setText(r.text);
     setIsSample(false);
-    analyse(content);
+    setImportNotes(r.notes);
+    if (r.review) {
+      // AI-read marks are shown for checking first — never analysed blind.
+      setNeedsReview(true);
+      setIssues([]);
+      setData(null);
+      setResult(null);
+      return;
+    }
+    analyse(r.text, false);
   }
 
   function printReports() {
@@ -96,6 +109,7 @@ export function ClassAnalyser() {
 
   return (
     <ToolShell id="class-analyser" title="Class test analyser">
+      <InstituteBar />
       <ol className="list-decimal space-y-1 pl-5 text-[0.9375rem] text-ink-soft">
         <li>Put one student per row and one topic per column — roll numbers are better than names.</li>
         <li>Optionally add a <strong>MAX</strong> row under the header with each topic's maximum marks. Without it, values are read as percentages.</li>
@@ -109,21 +123,18 @@ export function ClassAnalyser() {
             const s = sampleCsv();
             setText(s);
             setIsSample(true);
+            setImportNotes([]);
             onStart();
-            analyse(s);
+            analyse(s, true);
           }}
         >
           Load a fictional class
         </Button>
-        <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-full border border-line-strong bg-paper-raised px-5 text-[0.9375rem] font-medium text-ink hover:bg-paper-sunk has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-brand">
-          Upload CSV
-          <input type="file" accept=".csv,.tsv,.txt,text/csv" className="sr-only" onChange={onFile} />
-        </label>
         <Button variant="ghost" onClick={() => downloadText("heramb-class-template.csv", templateCsv())}>
           Download template
         </Button>
       </div>
-      {fileError ? <p role="alert" className="field-error">{fileError}</p> : null}
+      <ImportPanel onImported={onImported} onStart={onStart} />
 
       <label htmlFor="class-data" className="field-label mt-5">Or paste from Excel / Google Sheets</label>
       <textarea
@@ -144,6 +155,16 @@ export function ClassAnalyser() {
         Up to {LIMITS.students} students and {LIMITS.topics} topics. Everything stays in your browser.
       </p>
       {isSample ? <FictionalDataLabel className="mt-3" /> : null}
+      {importNotes.length ? (
+        <ul className="mt-3 space-y-1 text-sm text-ink-soft" role="status" data-testid="import-notes">
+          {importNotes.map((n) => <li key={n}>• {n}</li>)}
+        </ul>
+      ) : null}
+      {needsReview ? (
+        <p className="mt-3 rounded-lg border border-warn/40 bg-warn-tint/60 p-3 text-sm text-ink" data-testid="import-review">
+          Check the numbers above against the marksheet, correct anything that's wrong, then press <strong>Analyse class</strong>.
+        </p>
+      ) : null}
       <div className="mt-4">
         <Button onClick={() => analyse()} disabled={!text.trim()}>Analyse class</Button>
       </div>
@@ -151,6 +172,7 @@ export function ClassAnalyser() {
       {issues.length ? (
         <div ref={issuesRef} tabIndex={-1} role="alert" className="mt-6 rounded-xl border border-gap/30 bg-gap-tint/60 p-4 text-sm focus:outline-none" data-testid="class-issues">
           <p className="font-semibold text-gap">Please fix {issues.length === 1 ? "this" : `these ${issues.length}`} before analysing:</p>
+          <p className="mt-1 text-xs text-ink-muted">Row numbers count non-empty rows, starting with the header as row 1.</p>
           <ul className="mt-2 space-y-1 text-ink-soft">
             {issues.map((i, n) => (
               <li key={n}>
@@ -159,12 +181,24 @@ export function ClassAnalyser() {
               </li>
             ))}
           </ul>
+          {tidy ? (
+            <div className="mt-3 border-t border-gap/20 pt-3">
+              <p className="text-ink">This looks like an exported result sheet. Heramb can tidy it for you:</p>
+              <ul className="mt-1 text-ink-soft">{tidy.notes.map((n) => <li key={n}>• {n}</li>)}</ul>
+              <Button className="mt-2" variant="secondary" onClick={() => { const t = tidy.text; setText(t); setImportNotes(tidy.notes); analyse(t, false); }}>
+                Tidy and analyse
+              </Button>
+            </div>
+          ) : null}
         </div>
       ) : null}
 
       {result && data ? (
         <div ref={resultsRef} tabIndex={-1} className="mt-10 border-t border-line pt-8 focus:outline-none" data-testid="class-results">
           <h3 className="font-sans text-xl font-semibold">Class overview</h3>
+          {warnings.map((w) => (
+            <p key={w} role="status" className="mt-1 text-sm text-warn" data-testid="class-warning">{w}</p>
+          ))}
           {data.assumedPercent ? (
             <p className="mt-1 text-sm text-ink-muted">No MAX row found, so values were read as percentages.</p>
           ) : null}
@@ -261,7 +295,7 @@ export function ClassAnalyser() {
             <p className="font-semibold text-ink">Want this after every test, with mistake types and follow-up checks?</p>
             <p className="mt-1">
               That's what the full platform does.{" "}
-              <Link href="/pilot" className="font-medium text-brand underline underline-offset-4">Apply for an institute pilot</Link>.
+              <Link href="/founding" className="font-medium text-brand underline underline-offset-4">Join as a founding institute</Link> — free, no accounts.
             </p>
           </div>
           <p className="mt-4 text-sm text-ink-muted">

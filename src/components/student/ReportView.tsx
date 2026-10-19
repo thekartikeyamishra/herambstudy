@@ -8,11 +8,26 @@ import { Badge } from "@/components/ui/Primitives";
 import { statusFor, statusLabel } from "@/content/sampleData";
 import { track } from "@/lib/client/analytics";
 import { isSaved, loadHistory, saveReport, type SaveOutcome } from "@/lib/client/studentStore";
-import { decodeReport, focusTopics, type StudentReport } from "@/lib/tools/studentReport";
+import { decodeReport, focusTopics, reportId, type StudentReport } from "@/lib/tools/studentReport";
+import { recordUsage } from "@/lib/client/usage";
+import { getInstitute } from "@/lib/client/institute";
+import { doneBefore, markDone } from "@/lib/client/onceStore";
+import { addDays, revisionReminderIcs } from "@/lib/tools/ics";
+import { todayIso } from "@/lib/client/workspace";
 import { cn } from "@/lib/cn";
 
 const tone = { secure: "good", developing: "warn", gap: "gap" } as const;
 const bar = { secure: "bg-good", developing: "bg-warn", gap: "bg-gap" } as const;
+
+const OPENED_KEY = "heramb.reports-opened.v1";
+const HELPFUL_KEY = "heramb.reports-rated.v1";
+
+/** Student-side counts go to the institute code carried in the link (if any). Counts only. */
+const studentUsage = (r: StudentReport, type: Parameters<typeof recordUsage>[0]) => {
+  // A teacher previewing links on a device connected to the same institute isn't a student.
+  if (r.c && getInstitute()?.code === r.c) return;
+  recordUsage(type, { role: "student", code: r.c ?? null });
+};
 
 const fmt = (iso: string) =>
   new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
@@ -23,6 +38,10 @@ export function ReportView() {
   const [report, setReport] = useState<StudentReport | null>(null);
   const [saved, setSaved] = useState<SaveOutcome | "no">("no");
   const [savedCount, setSavedCount] = useState(0);
+  const [rated, setRated] = useState(false);
+  const [thanks, setThanks] = useState<"" | "yes" | "no">("");
+  const [nextTest, setNextTest] = useState("");
+  const [reminded, setReminded] = useState(false);
 
   useEffect(() => {
     const read = () => {
@@ -32,6 +51,9 @@ export function ReportView() {
       if (r) {
         setSaved(isSaved(r) ? "already_saved" : "no");
         setSavedCount(loadHistory().history.reports.length);
+        const id = reportId(r);
+        setRated(doneBefore(HELPFUL_KEY, id));
+        if (markDone(OPENED_KEY, id)) studentUsage(r, "report_opened");
       }
     };
     read();
@@ -65,7 +87,28 @@ export function ReportView() {
     if (r === "saved") {
       setSavedCount((c) => c + 1);
       track("student_report_saved");
+      studentUsage(report, "report_saved");
     }
+  }
+
+  function rate(helpful: boolean) {
+    if (!report) return;
+    if (markDone(HELPFUL_KEY, reportId(report))) studentUsage(report, helpful ? "student_helpful_yes" : "student_helpful_no");
+    setRated(true);
+    setThanks(helpful ? "yes" : "no");
+  }
+
+  function remind() {
+    if (!report) return;
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(nextTest) && nextTest > todayIso() ? nextTest : addDays(todayIso(), 7);
+    const ics = revisionReminderIcs({ testDate: date, testName: "your next test", focus: focusTopics(report), uid: `${reportId(report)}-${date}` });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([ics], { type: "text/calendar;charset=utf-8" }));
+    a.download = "heramb-revision-reminder.ics";
+    a.click();
+    URL.revokeObjectURL(a.href);
+    if (!reminded) studentUsage(report, "reminder_added");
+    setReminded(true);
   }
 
   return (
@@ -130,6 +173,19 @@ export function ReportView() {
         </ul>
       </section>
 
+      <section className="card p-5 sm:p-6" aria-labelledby="remind-title" data-testid="report-reminder">
+        <h2 id="remind-title" className="font-sans text-lg font-semibold">Remind me to revise before the next test</h2>
+        <p className="mt-2 text-[0.9375rem] text-ink-soft">Adds a 45-minute revision slot to your phone's calendar at 6 pm the day before, with your focus topics.</p>
+        <div className="mt-3 flex flex-wrap items-end gap-3">
+          <div>
+            <label htmlFor="next-test" className="field-label">Next test date (optional)</label>
+            <input id="next-test" type="date" className="field-input" min={todayIso()} value={nextTest} onChange={(e) => setNextTest(e.target.value)} />
+          </div>
+          <Button variant="secondary" onClick={remind}>{reminded ? "Added ✓ — download again" : "Add to calendar"}</Button>
+        </div>
+        {!nextTest ? <p className="mt-2 text-xs text-ink-muted">No date chosen: the reminder is set for 6 days from now.</p> : null}
+      </section>
+
       <section className="card border-brand/30 bg-brand-tint/30 p-5 sm:p-6" aria-labelledby="save-title">
         <h2 id="save-title" className="font-sans text-lg font-semibold">Track your progress across tests</h2>
         <p className="mt-2 text-[0.9375rem] text-ink-soft">
@@ -153,8 +209,21 @@ export function ReportView() {
         </div>
       </section>
 
+      <section className="card p-5 sm:p-6" aria-labelledby="useful-title" data-testid="report-useful">
+        <h2 id="useful-title" className="font-sans text-lg font-semibold">Was this report useful?</h2>
+        {rated ? (
+          <p role="status" className="mt-2 text-ink-soft">{thanks === "no" ? "Thanks for telling us — we'll keep improving it." : "Thanks — your teacher's institute sees only the total count, never who answered."}</p>
+        ) : (
+          <div className="mt-3 flex flex-wrap gap-3">
+            <Button variant="secondary" onClick={() => rate(true)}>Yes, it helped</Button>
+            <Button variant="ghost" onClick={() => rate(false)}>Not really</Button>
+          </div>
+        )}
+      </section>
+
       <p className="text-xs text-ink-muted">
-        This report is stored inside the link and on your device only — not on Heramb's servers. “Shared by” shows the name the
+        This report is stored inside the link and on your device only — not on Heramb's servers. Heramb counts opens, saves and the useful/not-useful taps as totals for the
+        sender's institute — never your marks or name. “Shared by” shows the name the
         sender typed; Heramb doesn't verify it. Thresholds: secure ≥ 75%, developing 50–74%, gap &lt; 50%. One test is a small
         sample — talk to your teacher about it.
       </p>

@@ -55,7 +55,6 @@ export const AD_FORBIDDEN_PREFIXES = [
   "/offline",
   "/pilot",
   "/r",
-  "/dev",
   "/me",
   "/email",
   "/app",

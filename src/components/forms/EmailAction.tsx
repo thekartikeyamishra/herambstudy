@@ -10,7 +10,7 @@ import { postJson } from "@/lib/client/postJson";
  * Confirm / unsubscribe pages. The action needs an explicit click (POST), so
  * email security scanners that pre-fetch links can't change anyone's consent.
  */
-export function EmailAction({ purpose }: { purpose: "confirm" | "unsubscribe" }) {
+export function EmailAction({ purpose }: { purpose: "confirm" | "unsubscribe" | "digest" }) {
   const [params, setParams] = useState<{ id: string; t: string } | null>(null);
   const [state, setState] = useState<"ready" | "missing" | "working" | "done" | "error">("ready");
   const [message, setMessage] = useState("");
@@ -31,7 +31,7 @@ export function EmailAction({ purpose }: { purpose: "confirm" | "unsubscribe" })
   async function act() {
     if (!params) return;
     setState("working");
-    const r = await postJson(`/api/email/${purpose}`, params);
+    const r = await postJson(purpose === "digest" ? "/api/institutes/digest" : `/api/email/${purpose}`, params);
     setMessage(r.message);
     setState(r.kind === "success" ? "done" : "error");
   }
@@ -39,7 +39,9 @@ export function EmailAction({ purpose }: { purpose: "confirm" | "unsubscribe" })
   const copy =
     purpose === "confirm"
       ? { button: "Yes, send me product updates", intro: "Please confirm you'd like occasional product updates from Heramb.study. You can unsubscribe at any time." }
-      : { button: "Unsubscribe from updates", intro: "Stop receiving product updates. Your invite request itself stays as it is." };
+      : purpose === "digest"
+        ? { button: "Stop weekly emails", intro: "Stop the weekly summary for your institute. Your institute code, dashboard and data stay as they are." }
+        : { button: "Unsubscribe from updates", intro: "Stop receiving product updates. Your invite request itself stays as it is." };
 
   if (state === "missing") {
     return (

@@ -27,7 +27,7 @@ export type ClassTrack = {
 const key = (s: string) => s.trim().toLowerCase();
 
 export function sortTests<T extends { date: string; name: string }>(tests: T[]): T[] {
-  return [...tests].sort((a, b) => a.date.localeCompare(b.date) || a.name.localeCompare(b.name));
+  return [...tests].sort((a, b) => a.date.localeCompare(b.date) || a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" }));
 }
 
 /**

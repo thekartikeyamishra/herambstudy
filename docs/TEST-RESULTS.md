@@ -1,4 +1,4 @@
-# Test results — v0.6.0, 14 October 2026
+# Test results — v0.6.0, 15 October 2026
 
 Environment: Linux sandbox, Node 22.22.0, npm 10.9.4, Chromium (Playwright build 1194). These are the actual results of commands run on this code.
 
@@ -6,15 +6,13 @@ Environment: Linux sandbox, Node 22.22.0, npm 10.9.4, Chromium (Playwright build
 |---|---|---|
 | TypeScript (strict) | `npm run typecheck` | **Pass** — 0 errors |
 | Lint | `npm run lint` | **Pass** — 0 errors, 0 warnings |
-| Unit / integration / component | `npm test` (Vitest 5) | **Pass** — 207/207 tests in 15 files (incl. all 53 test fixtures and 14 edge-case regressions) |
+| Unit / integration / component | `npm test` (Vitest 5) | **Pass** — 212/212 tests in 14 files (includes every test file in `tests/fixtures` checked against its documented expected result) |
 | Production build | `npm run build` | **Pass** — 36 routes; every page statically prerendered, only `/api/*` dynamic |
-| End-to-end | `npm run test:e2e` (desktop 1366px, tablet 820px, mobile 360px) | **Pass** — 195 passed, 0 failed, 12 skipped (single-viewport tests), one uninterrupted 9.6 min run |
-| Accessibility | axe-core WCAG 2.0/2.1/2.2 A+AA on 24 pages | **Pass** — 0 serious or critical violations |
+| End-to-end | `npm run test:e2e` (desktop 1366px, tablet 820px, mobile 360px) | **Pass** — 203 passed, 0 failed, 10 skipped (single-viewport tests run once by design), one uninterrupted run |
+| Accessibility | axe-core WCAG 2.0/2.1/2.2 A+AA on 24 public pages | **Pass** — 0 serious or critical violations |
 | Lighthouse | see `PERFORMANCE.md` | Perf 86–100 (mobile; audience pages 86–89), 100 (desktop); A11y 100; Best practices 100 |
+| Developer tools absent from production | `npm run build` (postbuild guard) + `npm run smoke:prod` | **Pass** — guard prints “OK — no developer routes”; `/dev`, `/dev/crash`, `/api/dev/state` → 404; no developer links in HTML. Guard verified to FAIL (exit 1) when dev routes are present, including with the flag set on the production domain |
 | Video | `cd video && npx tsc --noEmit` + full renders | **Pass** — 16:9, 9:16, 1:1 MP4s rendered |
-| Live smoke (dev) | `npm run smoke` | **Pass** — 28/28 |
-| Live smoke (production build) | `npm run smoke:prod` | **Pass** — 29/29; every `/dev` and `/api/dev/*` route 404 |
-| Dev code in production output | `grep` of `.next/` | **None** — no dev-only code in server or browser bundles |
 | Firestore rules | `npm run test:rules` | **Not run** — emulator download blocked in the build sandbox. Run locally. |
 | Dependency audit (production) | `npm audit --omit=dev` | **0 vulnerabilities** (after firebase-admin 14.5 upgrade + PostCSS override) |
 | Dependency audit (all, incl. dev tooling) | `npm audit` | 14 (2 moderate, 12 high), **dev-only**, see below |
@@ -56,9 +54,12 @@ Environment: Linux sandbox, Node 22.22.0, npm 10.9.4, Chromium (Playwright build
 - Plans: higher plans never remove features; free contains every available zero-cost tool including student links; public guarantees contain no unbacked promises (unit + E2E check on /pricing).
 - AI summary (from the earlier v0.5 work, now verified): aggregate-only input, provider fallback, quotas, cache; rule-based summary works with no AI configured.
 
-## Added in v0.6
-- Edge-case audit: 13 problems found by probing (see docs/TESTING.md §7), all fixed with regression tests.
-- Developer hub E2E: hub sections render, fixture download works, seeded student history appears in /me, corrupt tracker data shows a recovery message, Excel upload refused, fixture upload analysed, "Total" row rejected in the UI.
+## Added in v0.6 (selected)
+- Developer-tools gate: 8 environment combinations (dev, production, tests, preview with flag, flag on production deployment, flag with production domain in any case, non-exact flag value) — app and build script agree in every case.
+- Dev inbox and dev link secret exist only with developer tools; a real email provider wins.
+- Test kit: 39 data files, 5 backups, 11 link cases each checked against the manifest; links count only if they decode exactly as `/r` will.
+- Regressions: decimal-only numbers, all maximum-marks labels, misplaced MAX warning, >100% message, missing roll numbers, same-date natural sort, largest Hindi report link.
+- E2E: developer console (environment, dev inbox → confirm link → confirmed, seeding, file count from manifest), odd number formats rejected, "Full marks" row, longest Hindi link opens.
 
 ## Issues found by testing and fixed
 1. Layout shift on desktop from web-font swap → `next/font/local`.
@@ -68,6 +69,7 @@ Environment: Linux sandbox, Node 22.22.0, npm 10.9.4, Chromium (Playwright build
 5. Moderate advisories in firebase-admin 13 → upgraded to 14.5; high PostCSS advisory bundled with Next → override to 8.5.29; critical Vitest/Tinypool advisory → Vitest 5.
 6. v0.2: every resource page shipped all six tools → per-tool code splitting.
 7. v0.2: axe scan exceeded the 60 s default timeout on a cold dev server → test budget raised (no violations).
+11. v0.6: Hindi-heavy report links over 12,000 characters failed to open; “Full marks”/“Out of:” rows were read as a student; hex/exponent/space-inside numbers were silently accepted; MAX row at the bottom silently switched to percentages; misleading advice for “120%”; unnamed rows not flagged; “Unit 10” sorted before “Unit 2”. All fixed with regression tests and test files 16–19, 34, 35.
 10. v0.5: `/pricing` publicly promised renewal reminders and 12 months of read-only access after cancelling — neither exists or was decided; removed and moved to BUSINESS-MODEL.md as proposals. A planned robots `Disallow: /r` would have blocked `/resources` (prefix match) — replaced with noindex and a guard test.
 9. v0.4: "Save to class" could save an unnamed class (validation ran after the save) → validation moved first; it also saved the textarea rather than the analysed data → now saves exactly what was analysed; "1 gaps" grammar fixed.
 8. v0.3: six-item nav wrapped labels at 1024 px → full nav from 1280 px, compact menu below, `whitespace-nowrap`.

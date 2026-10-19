@@ -15,6 +15,9 @@ env:
   - variable: NEXT_PUBLIC_BRAND_NAME
     value: Heramb.study
     availability: [BUILD, RUNTIME]
+  - variable: NEXT_PUBLIC_OPERATOR_NAME
+    value: Kartikeya Mishra
+    availability: [BUILD, RUNTIME]
   # App Hosting runs with a service account, so Application Default Credentials work.
   - variable: FIREBASE_USE_ADC
     value: "true"

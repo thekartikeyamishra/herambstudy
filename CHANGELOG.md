@@ -1,28 +1,66 @@
 # Changelog
 
-## 0.6.0 — 14 October 2026
+## 0.7.0 — 19 October 2026
 
-Focus: testability. Every feature can be reached and tested locally, developer access can't reach production, and an edge-case audit fixed real loopholes.
+Focus: real users and usage to show **without accounts**, a loop that keeps institutes regular, and marks that arrive without retyping.
 
 ### Added
-- **Developer hub (`/dev`)** — local development only. Shows the live environment, a feature map (where each feature is, when users see it, whether it's visible right now, how to turn it on), every page including hidden ones, browser-data tools (seed demo tracker/student data, simulate corrupt data, clear), the in-memory submissions with reset, the email outbox, a signed-link generator for double opt-in, and downloads for all test files. Plus `/dev/crash` to see the error page.
-- **Kept out of production by construction** — dev routes use the `*.dev.tsx` / `*.dev.ts` extension, which only `next dev` recognises (`pageExtensions` in `next.config.ts`); dev switches check `process.env.NODE_ENV` so the build deletes them. Verified: no dev code anywhere in the production `.next/` output, and every dev route returns 404.
-- **Developer settings** — `.env.development.example` (copy to `.env.development.local`; loaded only by `npm run dev`): in-memory store, **email outbox** (captures emails instead of sending; wins over Resend so dev never emails real people), **mock AI provider** (`AI_PROVIDER=mock`, `AI_MOCK_MODE=ok|fail|garbage|slow`), **ad-slot preview**, raised rate limits.
-- **53 test files** in `test-fixtures/` (class sheets, follow-ups, tracker tests and backups, student links, form cases) with `manifest.json` + `README.md`; `tests/unit/fixtures.test.ts` checks every one.
-- **Live smoke test** — `npm run smoke` (28 checks in dev) and `npm run smoke:prod` (29 checks against a production build, including "dev routes don't exist").
-- **`docs/TESTING.md`** (and a PDF version) — feature map, flows, settings, test files, release checklist.
+- **Founding Institute Programme (`/founding`)** — a 30-second form issues a free institute code (`HRB-XXXX-XXXX`) and a numbered founding seat (first `FOUNDING_CAP`, default 50; founding discount on any future paid plan, never charged automatically). `?source=meeting` tags in-person sign-ups. Welcome email (if an email is given) and an owner alert.
+- **Teacher connection** — an `InstituteBar` on the class analyser and tracker; WhatsApp invite links (`#connect=CODE`) connect a teacher's browser in one tap.
+- **Anonymous usage ledger** (`POST /api/events`) — counts only (tests analysed, links created/shared, reports opened/saved, useful taps, reminders, imports), per India day, with hashed random device ids. Opt-out switch on the institute dashboard and on My progress. Report links carry the institute code (`c`) so student actions count for the right institute.
+- **Institute dashboard (`/institute#CODE`)** — the seven programme goals (activation, teacher adoption, distribution, student engagement, repeat usage, 30-day retention, value), health, 8-week rhythm, weekly streak, next step, teacher invite and a value-feedback form.
+- **Owner dashboard (`/admin`)** — password-gated (`OWNER_DASHBOARD_PASSWORD`, HMAC session cookie, 404 when unset): every institute's goals and health, filters (not activated, at risk, dormant, follow-up due), one-tap WhatsApp nudges, notes / next follow-up / status, formula-safe CSV export, delete.
+- **Weekly digest** — Monday 08:30 IST via Vercel Cron (`vercel.json`, `CRON_SECRET`), only for institutes that opted in; signed stop link + RFC 8058 one-click unsubscribe.
+- **Public live counter** — `/api/stats/public` and a homepage band with real totals, hidden until `PUBLIC_STATS_MIN` institutes (default 3).
+- **Import marks — no retyping:** Excel `.xlsx` (read in the browser, sheet chooser), CSV, **result exports from test platforms/ERPs/Google Forms** (title rows, names, contacts, totals, ranks removed; question-wise marks combined into chapters via a "Chapter" row), **Google Sheet link** (remembered for one-tap refresh), **photo/PDF of a marksheet** via the configured AI provider (consent, 4 MB, per-network and global daily caps; always shown for checking first). Failed pastes of raw exports offer **Tidy and analyse**.
+- **Student report actions** — "Was this useful?" and "Add to calendar" (a revision reminder `.ics` at 6 pm the day before the next test).
+- `docs/FOUNDING-PROGRAM.md` — meeting-day flow, metric definitions, consistency loop, configuration.
 
-### Fixed (edge-case audit — each has a regression test in `tests/unit/edge-cases.test.ts`)
-- "Total"/"Average" rows were analysed as students; "Total"/"Percentage"/"Rank" columns as topics; a second ID column (e.g. Roll No beside Name) as marks — now explicit errors.
-- Max-marks rows labelled "M.M.", "Full marks", "Max. Marks" were read as a student scoring 100% — now recognised.
-- Blank roll numbers became "Student 1" — now an error (needed for matching across tests).
-- "0x10", "1e1", "Infinity" were accepted as numbers — now rejected; "75%" is now accepted and converted against the topic maximum.
-- Pasted text over 1 MB could be saved to the tracker and make **all** saved classes unreadable — now refused, and storage validates before every write.
-- One damaged entry wiped a student's whole saved history — now only that entry is dropped.
-- Report links with trailing "." or "%20" (chat apps) failed — now open; links use the production URL when configured.
-- Line breaks were allowed in name/institution/city (could reach email subjects) — now rejected.
-- Forms posted without the timing field skipped the bot check — now rejected.
-- Smoke-test design bug caught during development: its reset-route check wiped test data — now uses a no-op request.
+### Hardened (audit, same release)
+- Usage counts can't be pumped: single actions count once (max 3 per batch), link counts are capped by class size, roles can't send the other side's events, and events without a registered institute code are not stored (public totals reflect institutes only).
+- The same test analysed again on a device counts once; each student's link counts once however often it's copied or downloaded; a teacher previewing links on a connected device isn't counted as a student.
+- Health and 30-day retention follow teacher activity (students re-opening old reports no longer keep an institute "active").
+- Deleting the most recent sign-up releases its founding seat (test sign-ups don't burn seat #01). Founding page copy follows `FOUNDING_CAP`; sign-ups after the cap are told plainly there's no seat.
+- Join success screen: "Not your device? Disconnect it" for sign-ups made on someone else's phone.
+- Pasted exports with a one-cell title row are split on the right delimiter.
+- `docs/TEST-PLAN-v0.7.md` — 45-minute manual test plan by role (head, teacher, student, owner, abuse cases).
+
+### Changed
+- Firestore rules explicitly deny `institutes/**` and `meta/**` (rules tests extended).
+- Privacy policy covers founding-programme data, usage counts, Google Sheet pass-through and photo import.
+- Primary institute CTAs on home, `/for-institutes`, `/guide` and the footer point to `/founding`; `/pilot` remains for supported pilots. `/admin` is disallowed in robots; `/admin` and `/institute` are noindex.
+
+## 0.6.1 — 18 October 2026
+
+Focus: a hydration fix, plus the go-to-market material that sits alongside the code.
+
+### Fixed
+- **Hydration warning caused by browser extensions.** Extensions such as Scribe and Grammarly add attributes like `data-scribe-recorder-ready` to `<html>` and `<body>` before React loads. `src/app/layout.tsx` now sets `suppressHydrationWarning` on those two elements only. Real mismatches inside page content are still reported.
+
+### Added
+- `video/PITCH-VIDEO-PROMPT.md` v2 is a prompt for Claude to build, audit and fix the pitch videos. It covers three cuts (institutions, investor, social), each in English and Hindi, with full voice-over scripts and an audit checklist. The checklist includes programmatic decoding of the QR code, which must point to `https://herambstudy.vercel.app/`.
+- `docs/HANDOVER.md` and `docs/HANDOVER.pdf` contain the complete project context needed to continue development.
+
+## 0.6.0 — 15 October 2026
+
+Focus: let the owner test everything — including hidden and not-yet-active features — without any of it reaching the live site, and close the edge cases found while doing so.
+
+### Added
+- **Developer console (`/dev`)** — environment status (never shows secrets), feature map with “when it appears” and “how to test”, seed tracker / student data, clear local data, in-memory submissions, **dev inbox** (every email the site would send, with working confirm/unsubscribe links), test files with download/copy, report-link cases, plan matrix, `/dev/crash` error page. Footer link in development only.
+- **Three locks keep developer tools out of production:** `*.dev.tsx` routes are compiled only when developer tools are on; every dev route returns 404 unless `devToolsEnabled()`; `npm run build` runs `scripts/assert-no-devtools.mjs`, which fails the build if a dev route is present. Never enabled on `VERCEL_ENV=production` or heramb.study, even if `HERAMB_DEV_TOOLS=true` is set there.
+- **`npm run smoke:prod -- <url>`** — checks a production build or the live site: developer routes 404, main pages/APIs/SEO files respond, no developer links in HTML.
+- **Test kit:** 39 class-data files (happy, edge, error, security), 5 tracker backups, 11 student-link cases — each expected result verified by `tests/unit/fixtures.test.ts`. Plus `docs/TESTING.md`, a PDF testing guide and a CSV test-plan checklist (107 rows).
+- Owner name **Kartikeya Mishra** set in `.env.example` and `apphosting.yaml` (`NEXT_PUBLIC_OPERATOR_NAME`).
+
+### Fixed
+- Student report links with many Hindi topic names exceeded a 12,000-character limit and failed to open → limit 20,000, and every link is decoded before it's offered.
+- “Full marks”, “Out of:”, “Total marks”, “Marks out of” rows were read as a student → recognised as the maximum-marks row.
+- A MAX row placed at the bottom silently switched to percentages → explicit warning.
+- `0x10`, `1e3`, `Infinity` and numbers with spaces inside (`1 5`) were accepted as numbers → rejected with a clear message; `+5`, `7,5`, `15 / 20`, `70 %` still accepted.
+- `120%` / `25/20` gave misleading MAX-row advice → “more than 100% — please check it”.
+- Rows without roll numbers were silently named by position → warning.
+- Same-date tests sorted “Unit 10” before “Unit 2” → natural order.
+- Earlier in v0.6: Excel `%` and `15/20` cells, Average/Total rows, invisible characters and empty trailing columns; impossible dates in backups/links; web addresses and direction-override characters in report text; line breaks in single-line fields (header/CSV injection); unsafe characters in topic names sent to AI.
 
 
 ## 0.5.0 — 14 October 2026

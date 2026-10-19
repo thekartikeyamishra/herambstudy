@@ -13,7 +13,7 @@ export function ToolShell({ title, children, id }: { title: string; children: Re
             <rect x="2.5" y="6" width="9" height="6.5" rx="1.5" stroke="currentColor" strokeWidth="1.3" />
             <path d="M4.5 6V4.5a2.5 2.5 0 0 1 5 0V6" stroke="currentColor" strokeWidth="1.3" />
           </svg>
-          Runs in your browser — nothing you enter is sent to us
+          Runs in your browser — marks you type, paste or upload aren't sent to us
         </p>
       </header>
       <div className="p-5 sm:p-6">{children}</div>

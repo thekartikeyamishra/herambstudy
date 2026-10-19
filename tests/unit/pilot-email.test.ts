@@ -3,7 +3,7 @@ import { __setBackendForTests } from "@/lib/server/backend";
 import { emailConfig, escapeHtml, inviteAcknowledgement, pilotOwnerAlert, signToken, verifyToken } from "@/lib/server/email";
 import { handleEmailAction, handleInvite, handlePilot, PILOT_SUCCESS_MESSAGE } from "@/lib/server/handlers";
 import { requestIdForEmail } from "@/lib/server/http";
-import { MemoryContactStore, MemoryInviteStore, MemoryPilotStore, MemoryRateLimiter } from "@/lib/server/memoryBackend";
+import { MemoryContactStore, MemoryInstituteStore, MemoryInviteStore, MemoryPilotStore, MemoryRateLimiter } from "@/lib/server/memoryBackend";
 
 const ORIGIN = "http://localhost:3000";
 let ip = 0;
@@ -39,7 +39,7 @@ let pilots: MemoryPilotStore;
 beforeEach(() => {
   invites = new MemoryInviteStore();
   pilots = new MemoryPilotStore();
-  __setBackendForTests({ kind: "memory", invites, contacts: new MemoryContactStore(), pilots, limiter: new MemoryRateLimiter() });
+  __setBackendForTests({ kind: "memory", invites, contacts: new MemoryContactStore(), pilots, institutes: new MemoryInstituteStore(), limiter: new MemoryRateLimiter() });
   vi.spyOn(console, "warn").mockImplementation(() => {});
   vi.spyOn(console, "error").mockImplementation(() => {});
 });

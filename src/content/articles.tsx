@@ -73,9 +73,12 @@ export const articles: Record<string, Article> = {
         </p>
         <h2>Privacy</h2>
         <p>
-          The file you upload or the data you paste is processed only in your browser. Nothing is sent to Heramb.study,
-          and nothing is saved when you close the page. Printed reports should be handled under your institute's
-          data-protection policy.
+          Excel and CSV files you upload, and data you paste, are processed only in your browser — they aren't sent to
+          Heramb.study, and nothing is saved when you close the page unless you save it to the tracker on this device. Two
+          optional imports work differently: a Google Sheet link is fetched through our server and passed straight to your
+          browser without being stored, and a photo or PDF (only after you tick the consent box) is sent to our AI provider to
+          read the table. If your institute is connected, only anonymous counts — never marks or names — are recorded.
+          Printed reports should be handled under your institute's data-protection policy.
         </p>
       </>
     ),

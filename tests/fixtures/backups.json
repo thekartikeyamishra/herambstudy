@@ -1,0 +1,32 @@
+[
+  {
+    "file": "60-tracker-backup-valid.json",
+    "ok": true,
+    "title": "Valid backup: 2 classes, 4 tests",
+    "expected": "Imports 2 classes; Class 9 B shows K01 Algebra 3\u00d7 repeating gap."
+  },
+  {
+    "file": "61-tracker-backup-corrupt.json",
+    "ok": false,
+    "title": "Truncated / not valid JSON",
+    "expected": "Error: not a Heramb backup. Nothing changes."
+  },
+  {
+    "file": "62-tracker-backup-wrong-version.json",
+    "ok": false,
+    "title": "Backup from a newer version",
+    "expected": "Error: not valid or from a newer version."
+  },
+  {
+    "file": "63-tracker-backup-bad-test-data.json",
+    "ok": false,
+    "title": "A saved test whose marks no longer parse",
+    "expected": "Error naming the test 'Unit test 2'. Nothing imported."
+  },
+  {
+    "file": "64-tracker-backup-impossible-date.json",
+    "ok": false,
+    "title": "31 February in a test date",
+    "expected": "Rejected (fixed in v0.6)."
+  }
+]

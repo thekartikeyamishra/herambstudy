@@ -19,6 +19,7 @@ export const staticRoutes: RouteEntry[] = [
   { path: "/resources", priority: 0.9, changeFrequency: "weekly" },
   { path: "/tracker", priority: 0.8, changeFrequency: "monthly" },
   { path: "/invite", priority: 0.7, changeFrequency: "monthly" },
+  { path: "/founding", priority: 0.9, changeFrequency: "weekly" },
   { path: "/pilot", priority: 0.8, changeFrequency: "monthly" },
   { path: "/pricing", priority: 0.7, changeFrequency: "monthly" },
   { path: "/about", priority: 0.5, changeFrequency: "monthly" },
@@ -46,4 +47,4 @@ export function indexableRoutes(): RouteEntry[] {
  * Robots rules match by PREFIX, so never add short paths like "/r" here — it would also
  * block "/resources". Personal pages (/r, /me) are excluded with a noindex meta tag instead.
  */
-export const nonIndexedPrefixes = ["/api/", "/offline", "/email/", "/dev/"];
+export const nonIndexedPrefixes = ["/api/", "/offline", "/email/", "/admin"];

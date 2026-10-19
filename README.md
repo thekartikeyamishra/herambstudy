@@ -28,23 +28,12 @@ Invite-only launch site for an education platform that turns assessments into to
 | Remotion launch video (16:9, 9:16, 1:1, captions, silent) | Source + rendered MP4s |
 | Owner CLI to export / find / delete waitlist records | Built |
 
-## Testing and developer access
-
-```powershell
-Copy-Item .env.development.example .env.development.local
-npm run dev        # then open http://localhost:3000/dev  (developer hub — never in production)
-npm test           # 207 unit + fixture tests
-npm run smoke      # live API edge cases against the dev server
-```
-
-Full guide: [docs/TESTING.md](docs/TESTING.md). Test files: [test-fixtures/](test-fixtures/README.md).
-
 ## Quick start (Windows, PowerShell)
 
 ```powershell
 npm install
 Copy-Item .env.example .env.local     # then set DEV_MEMORY_STORE=true for local testing
-npm run dev                            # http://localhost:3000
+npm run dev:memory                     # http://localhost:3000 — developer console at /dev
 ```
 
 Full setup including Firebase: [`docs/SETUP-WINDOWS.md`](docs/SETUP-WINDOWS.md).
@@ -53,7 +42,7 @@ Full setup including Firebase: [`docs/SETUP-WINDOWS.md`](docs/SETUP-WINDOWS.md).
 Next.js 15.5 (App Router, static rendering) · React 19.1 · TypeScript 5.9 strict · Tailwind CSS 3.4 · Zod · Firebase Admin 14 / Cloud Firestore · Vitest 5 · Playwright + axe · Remotion 4. Node 22.
 
 ## Scripts
-`dev` · `build` · `start` · `typecheck` · `lint` · `test` · `test:e2e` · `test:rules` · `check` (all gates) · `icons` · `waitlist`
+`dev` · `dev:memory` · `build` (+ automatic developer-route check) · `start` · `smoke:prod` · `typecheck` · `lint` · `test` · `test:e2e` · `test:rules` · `check` (all gates) · `icons` · `waitlist`
 
 See [CHANGELOG.md](CHANGELOG.md) for what changed in each version.
 
@@ -69,7 +58,7 @@ See [CHANGELOG.md](CHANGELOG.md) for what changed in each version.
 | [SECURITY](docs/SECURITY.md) | Trust boundaries, controls, threat model, residual risks |
 | [PERFORMANCE](docs/PERFORMANCE.md) | Lighthouse results and fixes |
 | [RESEARCH](docs/RESEARCH.md) | Competitors, ICP, keyword candidates (unverified), experiments |
-| [TESTING](docs/TESTING.md) | How to test every feature, developer hub, flows, test files, release checklist |
+| [TESTING](docs/TESTING.md) | How to reach and test every feature, the developer console, troubleshooting hidden features, test files, release checks |
 | [TEST-RESULTS](docs/TEST-RESULTS.md) | Actual results of every check run on this build |
 | [LAUNCH-CHECKLIST](docs/LAUNCH-CHECKLIST.md) | What must happen before going public |
 | [KNOWN-LIMITATIONS](docs/KNOWN-LIMITATIONS.md) | Open issues by severity |

@@ -1,5 +1,6 @@
 import type { NextConfig } from "next";
 import { buildCsp } from "./src/config/csp";
+import { devToolsEnabled } from "./src/config/devtools";
 
 const isDev = process.env.NODE_ENV !== "production";
 const analyticsEnabled = /^G-[A-Z0-9]+$/.test(process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID ?? "");
@@ -19,14 +20,15 @@ const securityHeaders = [
     : [{ key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" }]),
 ];
 
+/**
+ * Developer routes (*.dev.tsx / *.dev.ts) are only part of the app when developer tools
+ * are enabled for this build. In a production build they are not routes at all.
+ */
+const pageExtensions = devToolsEnabled() ? ["tsx", "ts", "dev.tsx", "dev.ts"] : ["tsx", "ts"];
+
 const nextConfig: NextConfig = {
-  /**
-   * Developer-only routes are named *.dev.tsx / *.dev.ts (e.g. src/app/dev/page.dev.tsx).
-   * They are only recognised by `next dev`. A production `next build` never sees them,
-   * so the /dev hub and /api/dev/* routes do not exist — and their code is not shipped.
-   */
-  pageExtensions: isDev ? ["dev.tsx", "dev.ts", "tsx", "ts"] : ["tsx", "ts"],
   reactStrictMode: true,
+  pageExtensions,
   poweredByHeader: false,
   compress: true,
   images: {

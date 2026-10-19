@@ -1,5 +1,8 @@
+import type { DayRow, DeviceCounts, FeedbackRow } from "@/lib/institute/metrics";
+import type { UsageEvent } from "@/lib/institute/events";
 import type {
   ContactTopic,
+  JoinSource,
   InstituteSize,
   InstitutionType,
   PilotExam,
@@ -100,12 +103,73 @@ export interface RateLimiter {
   hit(key: string, limit: number, windowMs: number): Promise<{ allowed: boolean; retryAfterSec: number }>;
 }
 
+/* ── Founding institutes and the usage ledger ───────────────────────────── */
+
+export type InstituteStatus = "active" | "paused" | "closed";
+
+/** Firestore document: institutes/{code}. Contact details are visible only to the owner. */
+export interface InstituteRecord {
+  code: string;
+  name: string;
+  city: string;
+  institutionType: InstitutionType;
+  contactName: string;
+  role: PilotRole;
+  phone: string | null;
+  email: string | null;
+  /** Opt-in weekly summary + test-day reminder email. */
+  weeklyDigest: { granted: boolean; recordedAt: Date; withdrawnAt: Date | null };
+  source: JoinSource | null;
+  foundingSeat: number | null;
+  status: InstituteStatus;
+  /** Owner-only CRM fields. */
+  notes: string | null;
+  nextFollowUp: string | null;
+  devices: DeviceCounts;
+  createdAt: Date;
+  activatedAt: Date | null;
+  lastActiveAt: Date | null;
+  privacyNoticeVersion: string;
+}
+
+export type NewInstitute = Omit<InstituteRecord, "code" | "foundingSeat" | "devices" | "activatedAt" | "lastActiveAt" | "status" | "notes" | "nextFollowUp">;
+
+export type InstituteUsage = { days: DayRow[]; devices: DeviceCounts; feedback: FeedbackRow[] };
+
+export type PublicTotals = {
+  institutes: number;
+  foundingTaken: number;
+  analysesReal: number;
+  linksShared: number;
+  reportsOpened: number;
+  studentActions: number;
+};
+
+export type InstitutePatch = Partial<Pick<InstituteRecord, "status" | "notes" | "nextFollowUp">>;
+
+export interface InstituteStore {
+  /** Creates an institute with a fresh unique code; assigns a founding seat while seats remain. */
+  create(input: NewInstitute, opts: { cap: number; makeCode: () => string }): Promise<{ code: string; seat: number | null }>;
+  get(code: string): Promise<InstituteRecord | null>;
+  /** Adds anonymous counts. Unknown codes only update the global totals. */
+  recordUsage(input: { code: string | null; deviceKey: string; role: "teacher" | "student"; events: Array<{ type: UsageEvent; n: number }>; day: string; at: Date }): Promise<void>;
+  usage(code: string, maxDays?: number): Promise<InstituteUsage>;
+  addFeedback(code: string, row: FeedbackRow): Promise<void>;
+  list(): Promise<InstituteRecord[]>;
+  update(code: string, patch: InstitutePatch): Promise<boolean>;
+  setDigest(code: string, granted: boolean, at: Date): Promise<boolean>;
+  /** Deletes the institute and all its usage data (data-deletion requests). */
+  remove(code: string): Promise<boolean>;
+  totals(): Promise<PublicTotals>;
+}
+
 export type Backend =
   | {
       kind: "firestore" | "memory";
       invites: InviteStore;
       contacts: ContactStore;
       pilots: PilotStore;
+      institutes: InstituteStore;
       limiter: RateLimiter;
     }
   | { kind: "unavailable"; reason: string };

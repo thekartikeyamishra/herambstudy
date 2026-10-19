@@ -1,12 +1,13 @@
 import { getAdminDb, adminConfigStatus } from "./firebaseAdmin";
-import { FirestoreContactStore, FirestoreInviteStore, FirestorePilotStore, FirestoreRateLimiter } from "./firestoreBackend";
-import { MemoryContactStore, MemoryInviteStore, MemoryPilotStore, MemoryRateLimiter } from "./memoryBackend";
+import { FirestoreContactStore, FirestoreInstituteStore, FirestoreInviteStore, FirestorePilotStore, FirestoreRateLimiter } from "./firestoreBackend";
+import { MemoryContactStore, MemoryInstituteStore, MemoryInviteStore, MemoryPilotStore, MemoryRateLimiter } from "./memoryBackend";
 import type { Backend } from "./types";
 
 type MemoryBundle = {
   invites: MemoryInviteStore;
   contacts: MemoryContactStore;
   pilots: MemoryPilotStore;
+  institutes: MemoryInstituteStore;
   limiter: MemoryRateLimiter;
 };
 
@@ -21,6 +22,7 @@ function memoryBundle(): MemoryBundle {
     invites: new MemoryInviteStore(),
     contacts: new MemoryContactStore(),
     pilots: new MemoryPilotStore(),
+    institutes: new MemoryInstituteStore(),
     limiter: new MemoryRateLimiter(),
   };
   return g.__herambMemory;
@@ -49,6 +51,7 @@ export function getBackend(): Backend {
         invites: new FirestoreInviteStore(db),
         contacts: new FirestoreContactStore(db),
         pilots: new FirestorePilotStore(db),
+        institutes: new FirestoreInstituteStore(db),
         limiter: new FirestoreRateLimiter(db),
       };
     }
@@ -66,21 +69,4 @@ export function getBackend(): Backend {
 export function __setBackendForTests(backend: Backend | null): void {
   g.__herambBackendOverride = backend;
   g.__herambEdgeLimiter = undefined;
-}
-
-/** Development: inspect the in-memory store (null unless the memory store is active). */
-export function devMemorySnapshot() {
-  if (process.env.NODE_ENV === "production") return null;
-  const b = getBackend();
-  if (b.kind !== "memory") return null;
-  const m = memoryBundle();
-  return { invites: [...m.invites.records.values()], pilots: [...m.pilots.records], contacts: [...m.contacts.records] };
-}
-
-/** Development: wipe the in-memory store and every rate-limit counter. */
-export function devResetMemory(): boolean {
-  if (process.env.NODE_ENV === "production") return false;
-  g.__herambMemory = undefined;
-  g.__herambEdgeLimiter = undefined;
-  return true;
 }

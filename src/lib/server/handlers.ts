@@ -12,6 +12,7 @@ import {
 import {
   actionUrl,
   deliver,
+  emailActive,
   emailConfig,
   inviteAcknowledgement,
   pilotOwnerAlert,
@@ -139,7 +140,7 @@ export async function handleInvite(req: Request) {
     // cannot be used to discover whether an email is already on the list.
     const outcome = await backend.invites.createIfAbsent(record);
     // Email only for new requests, so the form can't be used to spam an address repeatedly.
-    if (outcome === "created" && emailConfig().sending) {
+    if (outcome === "created" && emailActive()) {
       const wantsUpdates = record.consentRecords.marketingUpdates.granted;
       const unsub = signToken("unsubscribe", record.requestId);
       runAfterResponse(() =>
@@ -265,8 +266,9 @@ export async function handlePilot(req: Request) {
       createdAt: new Date(),
     };
     await backend.pilots.add(record);
-    const owner = emailConfig().ownerAlerts;
-    if (owner && emailConfig().sending) runAfterResponse(() => deliver(pilotOwnerAlert(owner, record)));
+    const cfg = emailConfig();
+    const owner = cfg.ownerAlerts ?? (cfg.devOutbox ? "owner@dev.local" : null);
+    if (owner && emailActive()) runAfterResponse(() => deliver(pilotOwnerAlert(owner, record)));
     return succeed(PILOT_SUCCESS_MESSAGE, 200);
   } catch (err) {
     console.error("[pilot] storage error:", err instanceof Error ? err.message : "unknown");

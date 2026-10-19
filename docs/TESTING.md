@@ -1,194 +1,152 @@
-# Testing guide — Heramb.study v0.6
+# Testing guide — how to test every feature
 
-How to see and test every feature, including ones normal visitors never see. Covers when each feature appears, the user flows, the test files, and how developer access is kept out of the live site.
+Owner: Kartikeya Mishra · Version 0.6.0 · 15 October 2026
 
----
-
-## 1. Quick start (Windows PowerShell)
-
-```powershell
-npm install
-Copy-Item .env.development.example .env.development.local   # developer settings (dev only)
-npm run dev                                                  # http://localhost:3000
-```
-
-Open **http://localhost:3000/dev**, the developer hub. It shows:
-
-- **Environment:** which features are switched on right now.
-- **Feature map:** every feature, where it lives, when users see it, and how to turn it on.
-- **All pages:** links to every page, including hidden ones (`/r`, `/me`, email pages, the error page and the 404 page).
-- **Browser data:** what this browser has saved, with buttons to seed demo data, simulate damaged data, or clear it.
-- **Submissions:** every invite, pilot and contact form you submit (in-memory store), and buttons to reset it and the rate limits.
-- **Email outbox:** every email the site would have sent, captured instead of sent.
-- **Signed email links:** a tool that makes confirm and unsubscribe links, so you can test double opt-in without a mailbox.
-- **Test files:** download links for all 53 test files.
-
-**Automated checks:**
-
-| Command | What it runs | Time |
-|---|---|---|
-| `npm test` | 207 unit, integration and fixture tests | ~10 s |
-| `npm run test:e2e` | 207 browser tests on desktop, tablet and mobile, plus accessibility scans (12 run on one size only) | ~10 min |
-| `npm run smoke` | 28 live edge-case requests against your running `npm run dev` | ~5 s |
-| `npm run smoke:prod` | 29 checks against a production build, including "dev tools don't exist" | ~5 s |
-| `npm run test:rules` | Firestore security rules (needs Java 11+) | ~30 s |
+This guide explains how to reach and test every feature, including the ones that are hidden until a setting or user action turns them on, and how developer-only access is kept off the live site.
 
 ---
 
-## 2. How developer access stays out of production
+## 1. Three ways to run the site
 
-Three independent layers protect the live site:
+| Mode | Command | Developer console | Use it for |
+|---|---|---|---|
+| **Development** (everyday testing) | `npm run dev:memory` → http://localhost:3000 | ✅ `/dev` | All features, forms saved in memory, emails captured in the dev inbox |
+| **Production build** (what users get) | `npm run build` then `npm start` | ❌ 404 | Install button, offline page, service worker, real performance, final checks |
+| **Vercel preview** (test on your phone / share with a tester) | Set `HERAMB_DEV_TOOLS=true` for the **Preview** environment only | ✅ `/dev` | Testing on real devices before going live |
 
-1. **The routes aren't in the build.** Dev pages are named `*.dev.tsx` / `*.dev.ts` (`src/app/dev/page.dev.tsx`, `src/app/api/dev/*/route.dev.ts`). `next.config.ts` recognises that extension only during `npm run dev`. A production build doesn't see those files, so `/dev` and `/api/dev/*` return 404.
-2. **Dev switches are removed at build time.** The mock AI, email outbox and ad preview check `process.env.NODE_ENV`, which the build replaces with `"production"`. Those branches are deleted from the output. Verified on 14 Oct 2026: none of the dev-only code appears anywhere in `.next/`.
-3. **Dev settings are never loaded for production.** Next.js reads `.env.development.local` only for `npm run dev`. The code also ignores every dev flag when `NODE_ENV=production`, including on Vercel or App Hosting preview deployments.
+`dev:memory` = development with `DEV_MEMORY_STORE=true`, so invite, pilot and contact forms are saved in memory (lost on restart) instead of answering "nothing was saved".
 
-**Verify it yourself before every release:**
+Testing on your phone over Wi-Fi: `npx next dev -H 0.0.0.0` with `DEV_MEMORY_STORE=true` in `.env.local`, then open `http://<your-PC-IP>:3000` on the phone (same Wi-Fi). Find the IP with `ipconfig` in PowerShell.
 
+---
+
+## 2. The developer console — `/dev`
+
+Open http://localhost:3000/dev (there's also a "Developer console" link in the footer, shown only in development).
+
+| Section | What it gives you |
+|---|---|
+| **Environment** | Every integration (storage, email, signed links, AI, analytics, ads, store badges, owner name, site URL): On / Dev / Off and how to change it. Secrets are never shown. |
+| **Feature map** | Every feature: who it's for, where it is, **when it appears to users**, how to test it, and an Open link. |
+| **Seed & reset** | One click: tracker demo (2 classes, 4 tests) or student history (3 reports). "Clear all local Heramb data" wipes this browser's tracker, student history, consent choice and saved institute name. |
+| **Submissions & dev inbox** | Invite requests, pilot applications and contact messages saved in memory, and every email the site would have sent, with clickable links (confirm, unsubscribe). "Clear" resets submissions, inbox and rate limits. |
+| **Test files** | Every test file with what it tests and the expected result, with Download and Copy buttons. |
+| **Report-link cases** | Valid and broken student report links (tampered, phishing, wrong version, too long). |
+| **Plan matrix** | What each plan can use today (in the plan **and** built). |
+| **Production safety** | How the console is kept off the live site, plus `/dev/crash` to see the error page. |
+
+### How developer access stays out of production (3 independent locks)
+
+1. **Not compiled.** Developer pages are `*.dev.tsx` / `*.dev.ts` files. `next.config.ts` only treats that extension as a page when developer tools are on at build time, so a production build has no `/dev` routes at all.
+2. **Runtime gate.** Every developer route checks `devToolsEnabled()` and answers 404 if it's off. It's **never** on for the production deployment (`VERCEL_ENV=production`) or for `heramb.study` / `www.heramb.study`, even if `HERAMB_DEV_TOOLS` is set there by mistake.
+3. **Build check.** `npm run build` automatically runs `scripts/assert-no-devtools.mjs`, which **fails the build** if a developer route appears in a production build.
+
+The dev inbox and the development-only link-signing secret follow the same gate. A real email provider always takes priority over the dev inbox.
+
+**Prove it yourself before every release:**
 ```powershell
 npm run build
-npm start                 # in a second terminal: npm run smoke:prod
+npm start
+# in a second terminal:
+npm run smoke:prod -- http://localhost:3000
 ```
-
-`smoke:prod` must report every `/dev` and `/api/dev/*` route as **404**.
+Expected: `/dev`, `/dev/crash` and `/api/dev/state` → 404, main pages 200, no developer links in the HTML. Also run it against the live site: `npm run smoke:prod -- https://heramb.study`.
 
 ---
 
-## 3. Developer settings (`.env.development.local`)
+## 3. When does each feature appear? (flows)
 
-| Setting | Effect in `npm run dev` |
+### Teacher / school / college / coaching flow
+1. `/resources/class-test-analyser` → paste or upload marks → **Analyse class**.
+2. **Appears only after a successful analysis:** teaching plan, gap map, students needing attention, reteach-groups CSV, printable student reports, **teaching summary + parent note**, **student report links**, **save to a class**, **follow-up check**.
+3. **Save this test to a class** → `/tracker?class=…`.
+4. In the tracker: topic trends appear after **1** test; **"since the previous test"** and **"gaps that keep repeating"** need **2+** tests; **term reports** appear once a class has tests.
+5. After reteaching: next test → follow-up check (in the analyser) or add it in the tracker.
+
+### Student flow
+1. The teacher sends a personal link `/r#…` (WhatsApp).
+2. The student opens it → report → **Save to my progress**.
+3. `/me` shows every saved report and each topic over time (empty until the first save).
+4. `/r` without the part after `#` shows "This report link is incomplete" (by design).
+
+### Institution sales flow
+`/for-schools`, `/for-colleges` or `/for-institutes` → **Apply for a free pilot** → `/pilot?type=school|college|coaching` (type pre-selected) → stored → owner alert email (or dev inbox).
+
+### Invite and email flow
+`/invite` → stored once per email (a duplicate gives the same success message and a counter, never a second record) → acknowledgement email **only for new requests** → if "product updates" was ticked: confirm link → `/email/confirm` → press the button → confirmed. Unsubscribe: `/email/unsubscribe` or the one-click header in the email.
+
+---
+
+## 4. "Why can't I see…?" — troubleshooting
+
+| You don't see… | Why | How to see it |
+|---|---|---|
+| `/dev` (404) | You're running a production build | `npm run dev:memory` |
+| Forms say "nothing was saved" | No storage configured | `npm run dev:memory`, or set Firebase variables |
+| Emails | Email is off | Development: check `/dev` → Dev inbox. Live: set `RESEND_API_KEY` + `EMAIL_FROM` |
+| Confirm/unsubscribe pages say links aren't active | No `EMAIL_TOKEN_SECRET` (production) | Set a 32+ character secret. Development uses a dev-only secret automatically |
+| "Install Web App" button | Only in a **production build**, in Chrome/Edge, when not already installed | `npm run build && npm start` → open in Chrome. iPhone shows "Add to Home Screen" steps |
+| Offline page | Needs the service worker (production build) | Production build → visit pages → DevTools › Network › Offline → open an unvisited page |
+| Analytics consent banner | No GA4 ID, or you already chose | Set `NEXT_PUBLIC_GA_MEASUREMENT_ID`; `/dev` → Clear all local data |
+| Ads | Disabled until AdSense approval (correct) | Never test with fake IDs; placement rules are unit-tested |
+| AI-written summary (you see "Made from your numbers") | No AI provider configured | Set `AI_PROVIDER=anthropic` + `AI_API_KEY` (costs money) — the rule-based summary is the free default |
+| "Save this test to a class" disabled | Private/incognito browsing blocks storage | Use a normal window |
+| Tracker "since previous test" / repeating gaps | The class has only 1 test | Add a second test (files 41 → 42 → 43) or `/dev` → Tracker demo |
+| Store badges are "Coming soon" | Store URLs not set (correct until apps exist) | Set `NEXT_PUBLIC_GOOGLE_PLAY_URL` to any https URL and restart |
+| Hindi / German in the language menu | Planned, not built | — |
+| Cloud history, parent delivery, principal dashboard… | **Not built yet** — only described on `/pricing` as Planned | Nothing to switch on; they appear when built |
+| A student's report link "incomplete" | The link was cut (WhatsApp line break) or it contains a web address | Send the whole link; remove web addresses from institute/test/topic names |
+
+---
+
+## 5. Test files (the test kit)
+
+All files are in `tests/fixtures/` and downloadable from `/dev` → Test files. Every file's expected result is **checked automatically** by `tests/unit/fixtures.test.ts`, so these descriptions can't silently become wrong.
+
+| Range | Type | Examples |
+|---|---|---|
+| 01–19 | Valid and edge-case class data | marks with MAX, percentages, Excel `%` cells, negative marking, absences, semicolons + decimal commas, quotes + BOM, Hindi names, Excel trailing columns, Average/Total rows, `15/20` cells, Windows line endings, an all-absent topic, 1×1, 500 students × 40 topics, "Full marks" label, misplaced MAX row, missing roll numbers, 40 long Hindi topics |
+| 20–29, 34–35 | Errors (must be rejected with a clear message) | score above max, non-numeric, duplicate roll/topic, no header, student named MAX, too many topics/students, empty topic name, bad MAX row, hex/exponent/space-in-number, percentages above 100% |
+| 30–31 | Follow-up check pair | renamed and new topics, students who left or joined |
+| 41–43 | Tracker sequence | three tests of one class with repeating gaps |
+| 50–52 | Security | spreadsheet formula injection, HTML in names, web addresses in names |
+| 60–64 | Tracker backups | valid, corrupt, wrong version, bad test data, impossible date |
+| `report-links.json` | Student links | valid, Hindi, tampered, phishing URL, wrong version, truncated, longest valid |
+
+`TEST-PLAN-CHECKLIST.csv` (in the downloadable test kit) lists every manual test with steps, expected result and blank Result/Notes columns to fill in.
+
+---
+
+## 6. Automated tests
+
+| Command | What it runs |
 |---|---|
-| `DEV_MEMORY_STORE=true` | Form submissions are kept in memory and shown at `/dev`. No Firebase needed. |
-| `EMAIL_DEV_OUTBOX=true` | Emails are captured at `/dev` instead of sent. This takes priority over Resend, so development never emails real people by accident. |
-| `OWNER_NOTIFICATION_EMAIL=…` | Turns on the pilot alert email (lands in the outbox). |
-| `EMAIL_TOKEN_SECRET=…` | Signs confirm and unsubscribe links. Any string of 32+ characters works locally. |
-| `AI_PROVIDER=mock` | A free, offline AI for the teaching summary. `AI_MOCK_MODE` is `ok`, `fail`, `garbage` or `slow`; the last three test the fallbacks. |
-| `NEXT_PUBLIC_ADS_PREVIEW=true` | Shows a dashed placeholder box where an ad would go. No Google script loads. |
-| `NEXT_PUBLIC_GOOGLE_PLAY_URL` / `NEXT_PUBLIC_APP_STORE_URL` | Turns the "Coming soon" store badges into real links. |
-| `NEXT_PUBLIC_GA_MEASUREMENT_ID=G-…` | Shows the analytics consent banner. |
-| `RATE_LIMIT_*_PER_IP=100` | Raises the form limits so manual testing isn't blocked. The hub's reset button also clears them. |
-
-Restart `npm run dev` after changing this file. The end-to-end tests pin their own values, so your local file can't change their results.
+| `npm run typecheck` | TypeScript strict |
+| `npm run lint` | ESLint, zero warnings |
+| `npm test` | Unit, integration, component and test-file checks (Vitest) |
+| `npm run test:e2e` | Browser tests on desktop, tablet and mobile, accessibility scan, developer console (first time: `npx playwright install chromium`) |
+| `npm run test:rules` | Firestore security rules (needs Java 11+) |
+| `npm run build` | Production build + automatic developer-route check |
+| `npm run smoke:prod -- <url>` | Production smoke test against a running build or the live site |
+| `npm run check` | typecheck + lint + test + build |
 
 ---
 
-## 4. Every feature: where it is, when users see it, how to test it
+## 7. Edge cases fixed in v0.6
 
-| Feature | How to reach it | Users see it when… | How to test it |
-|---|---|---|---|
-| Class test analyser | Free tools → Class test analyser (`/resources/class-test-analyser`) | Always | Press "Load a fictional class", or upload any file from `test-fixtures/class-analyser/` |
-| Teaching plan, gap map, reteach CSV, printed student reports | Same page, below the results | After a successful "Analyse class" | `14-valid-plan-whole-class-group-maintain.csv` shows all three plan labels; "Print individual student reports" prints one page per student |
-| Follow-up check | Analyser → "Compare with a follow-up test" | After analysing | `follow-up/01-unit-test.csv`, then `02-follow-up-check.csv`: 23 students matched, mismatches listed |
-| Student report links | Analyser → "Create student report links" | After analysing, once institute, test and date are filled in | Press "Preview" on any student, or open the links in `student-links/` |
-| Save to tracker | Analyser → "Save this test to a class" | After analysing. Not offered in private browsing | Save, then follow the link to `/tracker` |
-| Teaching summary + parent note | Analyser → "Write my summary" | After analysing | No AI configured: "Made from your numbers". `AI_PROVIDER=mock`: "[MOCK AI]" text. `AI_MOCK_MODE=fail`: rule-based text plus a note |
-| Class progress tracker | Footer → Class progress tracker (`/tracker`) | Always. Trends need 1 test; repeating gaps and "since previous test" need 2+ | Add `tracker/unit-1.csv`, `unit-2.csv`, `unit-3.csv` to one class. Expect R03 Algebra (3×), R08 Statistics (3×), R05 Algebra (2×), R07 Geometry (2×) |
-| Tracker backup and import | `/tracker` → Export / Import | Always | Import each `tracker/backup-*.json`; the expected results are in `test-fixtures/README.md` |
-| Student term reports | `/tracker`, inside a class | Class has 1+ test | Choose "Preview student", then print all |
-| Student report page | Only via a link (`/r#…`) | A teacher sends the link. Never shown in navigation or search | `/dev` → All pages → "/r — student report" |
-| My progress (students) | `/me`, linked from every report | Always; content appears after saving | `/dev` → "Seed student history", then `/me` |
-| Invite form | Header → Request an invite (`/invite`) | Always. Saving needs storage | `forms/invite-test-cases.csv` (9 cases) |
-| Pilot form | Footer → Apply for a pilot (`/pilot`, or `?type=school`, `college`, `coaching`, `tutor`) | Always | `forms/pilot-test-cases.csv` (8 cases) |
-| Contact form | Footer → Contact (`/contact?topic=…`) | Always | `forms/contact-test-cases.csv` (5 cases) |
-| Invite acknowledgement email | — | First request from a new address, when email is configured | Submit an invite, then check `/dev` → Email outbox. A duplicate request sends no second email |
-| Double opt-in (confirm / unsubscribe) | Links inside the email | Signed links configured, and updates ticked | `/dev` → Signed email links → open Confirm, then Unsubscribe. The "Tampered" link must be refused |
-| Pilot alert to owner | — | Email + `OWNER_NOTIFICATION_EMAIL` configured | Submit a pilot, then check the outbox |
-| Analytics consent banner | Bottom of public pages | GA4 ID set and no choice yet. Never on `/r`, `/me`, `/dev` | Set a fake `G-…` ID; `/dev` → clear "Analytics consent choice" |
-| Ad slot | `/resources/<article>` only | AdSense approved with real IDs + visitor consent | `NEXT_PUBLIC_ADS_PREVIEW=true`; never appears on home, forms, legal pages, `/r` or `/me` |
-| Store badges | Footer, `/for-students` | Always: "Coming soon" without URLs, real links with URLs | Set the two store URLs |
-| "Install Web App" | Footer, `/for-students`, `/r` | Production build, Chrome or Edge. iPhone shows "Add to Home Screen" instructions instead | `npm run build && npm start`, open in Chrome |
-| Offline page | `/offline` | Production build, after one visit, then offline on an uncached page | Production build → DevTools → Network → Offline |
-| Plans & pricing | Footer → Plans & pricing (`/pricing`) | Always | Check: no promises that don't exist yet |
-| Error page / 404 | Any URL | A page crashes / an unknown address | `/dev/crash` (dev only), or `/anything` |
-| Planned features | — | Not built; shown only as "Planned" badges on `/pricing` and `/guide` | Nothing to test yet |
-| Payments | — | Not implemented | Nothing to test |
-
-### When will planned features appear?
-
-They don't exist in the code yet, so there's nothing to hide or unlock. Their status is defined in one file, `src/config/plans.ts`. Each feature there is marked `available`, `pilot` or `planned`, and the pricing page and guide read that value. When a feature is built, change its availability there. `canUse(plan, feature)` in `src/lib/entitlements.ts` is the gate any new feature should check.
-
----
-
-## 5. User flows to walk through before each release
-
-**Teacher, about 5 minutes**
-
-1. Open the class test analyser and upload `01-valid-sample-24-students.csv`.
-2. Read the teaching plan.
-3. Download the reteach groups CSV.
-4. Print the student reports.
-5. Write a summary.
-6. Create student report links, then copy all.
-7. Save the test to a new class.
-8. Open the tracker and add `follow-up/02-follow-up-check.csv`. You should see "gaps closed" and repeating gaps.
-9. Export a backup, delete the class, then import the backup.
-
-**Student, about 2 minutes**
-
-1. Open a report link in a different browser or a private window.
-2. Check the report shows "Shared by…" and the focus topics.
-3. Press "Save to my progress".
-4. Open a second report for the same student and save it.
-5. Open `/me` and check the topic history.
-
-**Institution, about 3 minutes**
-
-1. Open `/for-schools` and press "Apply for a free pilot". "School" should be pre-selected.
-2. Submit the form.
-3. In `/dev`, check the submission and the owner alert email.
-
-**Invite and email, about 3 minutes**
-
-1. Submit an invite with "updates" ticked.
-2. Check that the outbox shows the acknowledgement with a confirm link.
-3. Submit the same email again: the response should be identical, with no second email.
-4. Use the confirm link: in `/dev`, Submissions should show "confirmed".
-5. Unsubscribe: it should now show "unsubscribed".
-6. Try the tampered link: it must be refused.
-
----
-
-## 6. Test files (`test-fixtures/`, 53 files)
-
-Every file is checked by `npm test` against `test-fixtures/manifest.json`. The full table with expected results is in `test-fixtures/README.md`. The files are never deployed.
-
-| Folder | Files | Covers |
+| Problem found | Effect before | Now |
 |---|---|---|
-| `class-analyser/` | 14 valid + 18 error + 1 too large + 1 wrong type | MAX row, percentages, absences, negative marking, `;` and decimal commas, tabs, quotes and BOM, Hindi, college units, M.M. and `75%`, the 500-student / 40-topic limits, formula-like IDs; plus every error rule |
-| `follow-up/` | 3 | Case-insensitive matching, added and removed topics and students, a test with nothing in common |
-| `tracker/` | 3 tests + 6 backups | Repeating gaps with an absence; valid, corrupt, future-version, broken-test, over-limit and script-in-names backups |
-| `student-links/` | 24 valid links + 12 edge cases | Trailing punctuation, Hindi, HTML in names, truncated, tampered, wrong version, too many topics |
-| `forms/` | 22 cases | Every validation rule for invite, pilot and contact |
+| Report links with many Hindi topic names | Link over 12,000 characters → student saw "link incomplete" | Limit 20,000; every link is decoded before it's offered, so a link that wouldn't open is never shown |
+| "Full marks", "Out of:", "Total marks" rows | Read as a student, so every score was misread | Recognised as the maximum-marks row |
+| MAX row at the bottom of the sheet | Values silently read as percentages | Clear warning telling you to move it to row 2 |
+| `0x10`, `1e3`, `1 5` in a cell | Silently became 16, 1000, 15 | Rejected with a message; `+5`, `7,5`, `15 / 20`, `70 %` still accepted |
+| `120%` in a cell | Unhelpful advice about adding a MAX row | "“120%” is more than 100% — please check it." |
+| Rows without roll numbers | Silently named Student 1, 2… | Warning asking for roll numbers |
+| Two tests on the same date | "Unit 10" sorted before "Unit 2" | Natural order |
+| Excel `45%` / `15/20` cells, Average/Total rows, invisible characters, empty trailing columns | Errors or summary rows counted as students | Handled (earlier v0.6 work) |
+| Impossible dates (`2026-02-31`) in backups and links | Accepted | Rejected |
+| Web addresses or direction-override characters in report text | A crafted link could show "pay fees at …" on heramb.study | Rejected; the generator explains why |
+| Line breaks in names | Could inject email headers / break CSV exports | Refused for single-line fields |
+| Topic names with `<>{}` sent to AI | Could produce an empty name | Cleaned, never empty |
 
----
-
-## 7. Edge-case audit (v0.6): problems found and fixed
-
-| Problem | Before | Now |
-|---|---|---|
-| A "Total"/"Average" row at the bottom of a sheet | Counted as a student, or a confusing error | Clear error naming the row |
-| A "Total", "Percentage", "Rank" or "Grade" column | Silently counted as a topic | Error explaining it's not a topic |
-| Name and Roll No columns both present | Roll numbers analysed as marks | Error: keep one ID column |
-| Max-marks row labelled "M.M.", "Full marks" or "Max. Marks" | Treated as a student scoring 100% | Recognised as the max-marks row |
-| Blank roll number | Invented "Student 1" (breaks test-to-test matching) | Error |
-| "0x10", "1e1", "Infinity" | Accepted as numbers | Rejected |
-| "75%" in a cell | Rejected | Accepted and converted against the topic maximum |
-| Pasted text over 1 MB saved to the tracker | Could make all saved classes unreadable | Refused before parsing; storage validates before every write |
-| One damaged entry in a student's history | Whole history discarded | Valid reports kept |
-| Report link with a trailing "." or "%20" (chat apps) | "Incomplete link" | Opens normally |
-| Report links generated on a preview domain | Pointed at the preview site | Use the production URL when configured |
-| Line breaks in name, institution or city | Accepted (could reach email subjects) | Rejected (multi-line notes and messages still allowed) |
-| Form posted without the timing field | Skipped the anti-bot check | Rejected |
-
-Each fix has a regression test in `tests/unit/edge-cases.test.ts`.
-
----
-
-## 8. Release checklist
-
-- [ ] `npm run typecheck`, `npm run lint` and `npm test` all pass
-- [ ] `npm run test:e2e` passes
-- [ ] `npm run build`, `npm start`, then `npm run smoke:prod`: all pass, every dev route 404
-- [ ] `npm run test:rules` passes (Java)
-- [ ] Walk the four flows in §5 on a real phone
-- [ ] On the live site: `/api/health` reports `firestore`; submit and delete one real invite (`npm run waitlist -- delete`)
+Passing tests are evidence of testing, not proof that nothing can go wrong. Test on real phones (Android Chrome, iPhone Safari) before launch.

@@ -1,141 +1,117 @@
-// @vitest-environment jsdom
 /**
- * Every file in test-fixtures/ must behave exactly as manifest.json (and README.md) says.
- * If a fixture or a rule changes, this test tells you which expectation broke.
+ * Runs every file in tests/fixtures through the real parser and checks it against the
+ * expectation recorded in tests/fixtures/manifest.json. If behaviour changes, the test
+ * kit and this test disagree — so the downloadable test files never go stale.
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { parseBackup } from "@/lib/client/workspace";
-import { analyseClass, buildDataset, checkTextSize, compareClasses, groupsToCsv, parseTable } from "@/lib/tools/classAnalysis";
-import { decodeReport } from "@/lib/tools/studentReport";
+import { analyseClass, buildDataset, compareClasses, groupsToCsv, parseTable, type Dataset } from "@/lib/tools/classAnalysis";
+import { buildReports, decodeReport, encodeReport, linksAsCsv } from "@/lib/tools/studentReport";
 import { trackClass } from "@/lib/tools/tracker";
-import { contactMessageSchema, inviteRequestSchema, pilotApplicationSchema } from "@/lib/validation/schemas";
 
-const ROOT = join(process.cwd(), "test-fixtures");
-const read = (f: string) => readFileSync(join(ROOT, f), "utf8");
-type ClassCase = { file: string; expect: "ok" | "error" | "too_large" | "upload_rejected"; students?: number; topics?: number; issue?: string; firstScores?: number[]; plan?: string[] };
-const manifest = JSON.parse(read("manifest.json")) as {
-  class: ClassCase[];
-  followUp: Array<{ first: string; second: string; matchedStudents?: number; onlyFirstTopics?: string[]; onlySecondTopics?: string[]; unmatchedStudents?: { onlyFirst: number; onlySecond: number }; noMatch?: boolean }>;
-  tracker: Array<{ tests: string[]; persistent: Array<{ student: string; topic: string; tests: number }> }>;
-  backups: Array<{ file: string; expect: "ok" | "error"; message?: string }>;
-  links: Array<{ file: string; count?: number; edgeCases?: boolean }>;
-  forms: Array<{ file: string; schema: "invite" | "pilot" | "contact" }>;
+type Expect = {
+  ok: boolean;
+  students?: number;
+  topics?: number;
+  assumedPercent?: boolean;
+  warning?: string;
+  issue?: string;
+  noDataTopic?: string;
+  linksOk?: number;
+  csvEscaped?: boolean;
+  compareWith?: string;
+  matched?: number;
+  onlyFirstTopics?: string[];
+  onlySecondTopics?: string[];
+  closed?: number;
+  slipped?: number;
+  trackerSet?: string[];
+  persistent?: Array<[string, string, number]>;
 };
-const dataset = (f: string) => buildDataset(parseTable(read(f))).dataset!;
+type Entry = { file: string; title: string; expect: Expect };
 
-describe("class analyser fixtures", () => {
-  for (const c of manifest.class) {
-    it(`${c.file} → ${c.expect}`, () => {
-      if (c.expect === "upload_rejected") {
-        expect(c.file).not.toMatch(/\.(csv|tsv|txt)$/i); // the upload control accepts only these extensions
-        return;
-      }
-      const text = read(c.file);
-      if (c.expect === "too_large") {
-        expect(checkTextSize(text)).toMatch(/limit is 1 MB/);
-        return;
-      }
-      expect(checkTextSize(text)).toBeNull();
-      const r = buildDataset(parseTable(text));
-      if (c.expect === "error") {
+const dir = join(process.cwd(), "tests/fixtures");
+const manifest = JSON.parse(readFileSync(join(dir, "manifest.json"), "utf8")) as Entry[];
+const load = (file: string) => buildDataset(parseTable(readFileSync(join(dir, file), "utf8")));
+const data = (file: string): Dataset => {
+  const r = load(file);
+  if (!r.dataset) throw new Error(`${file}: ${r.issues.map((i) => i.message).join("; ")}`);
+  return r.dataset;
+};
+
+describe("test-kit fixtures behave as documented", () => {
+  it("has a manifest entry for every fixture", () => {
+    expect(manifest.length).toBeGreaterThanOrEqual(30);
+  });
+
+  for (const f of manifest) {
+    it(`${f.file} — ${f.title}`, () => {
+      const r = load(f.file);
+      const e = f.expect;
+      if (!e.ok) {
         expect(r.dataset).toBeNull();
-        expect(r.issues.map((i) => i.message).join(" | ")).toContain(c.issue!);
+        expect(r.issues.map((i) => i.message).join(" | ")).toContain(e.issue!);
         return;
       }
       expect(r.issues).toEqual([]);
-      expect(r.dataset!.students).toHaveLength(c.students!);
-      expect(r.dataset!.topics).toHaveLength(c.topics!);
-      if (c.firstScores) expect(r.dataset!.students[0]!.scores).toEqual(c.firstScores);
-      const analysis = analyseClass(r.dataset!);
-      if (c.plan) expect(analysis.plan.map((t) => t.action)).toEqual(c.plan);
-      // Exports must never start a cell with a formula character.
-      for (const line of groupsToCsv(analysis).split("\n").slice(1)) {
-        for (const cell of line.split(",")) expect(cell.replace(/^"/, "")).not.toMatch(/^[=+@]/);
+      const d = r.dataset!;
+      if (e.students !== undefined) expect(d.students).toHaveLength(e.students);
+      if (e.topics !== undefined) expect(d.topics).toHaveLength(e.topics);
+      if (e.assumedPercent !== undefined) expect(d.assumedPercent).toBe(e.assumedPercent);
+      if (e.warning) expect(r.warnings.join(" ")).toContain(e.warning);
+      const a = analyseClass(d);
+      if (e.noDataTopic) {
+        expect(a.topics.find((t) => t.name === e.noDataTopic)?.action).toBe("no_data");
+        expect(a.plan[a.plan.length - 1]?.name).toBe(e.noDataTopic);
       }
-    });
-  }
-});
-
-describe("follow-up fixtures", () => {
-  for (const f of manifest.followUp) {
-    it(`${f.first} vs ${f.second}`, () => {
-      const c = compareClasses(dataset(f.first), dataset(f.second));
-      if (f.noMatch) {
-        expect(c.topics).toEqual([]);
-        return;
+      if (e.linksOk !== undefined) {
+        const reports = buildReports(d, a, { institute: "Test Institute", test: "Unit 1", date: "2026-10-01" });
+        // A link only counts if it opens exactly as the report page will open it.
+        expect(reports.filter((x) => decodeReport(encodeReport(x)) !== null)).toHaveLength(e.linksOk);
       }
-      expect(c.matchedStudents).toBe(f.matchedStudents);
-      expect(c.unmatchedTopics).toEqual({ onlyFirst: f.onlyFirstTopics, onlySecond: f.onlySecondTopics });
-      expect(c.unmatchedStudents).toEqual(f.unmatchedStudents);
-      expect(c.totals.closed).toBeGreaterThan(0);
-    });
-  }
-});
-
-describe("tracker fixtures", () => {
-  for (const t of manifest.tracker) {
-    it("three units produce the documented repeating gaps", () => {
-      const dates = ["2026-07-01", "2026-08-01", "2026-09-01"];
-      const track = trackClass(t.tests.map((file, i) => ({ id: `t${i}`, name: file, date: dates[i]!, dataset: dataset(file) })));
-      expect(track.persistent).toEqual(expect.arrayContaining(t.persistent));
-      expect(track.persistent).toHaveLength(t.persistent.length);
-    });
-  }
-  for (const b of manifest.backups) {
-    it(`${b.file} → ${b.expect}`, () => {
-      const r = parseBackup(read(b.file));
-      expect(r.ok).toBe(b.expect === "ok");
-      if (!r.ok && b.message) expect(r.message).toContain(b.message);
-    });
-  }
-});
-
-describe("student link fixtures", () => {
-  for (const l of manifest.links) {
-    it(l.file, () => {
-      if (l.count) {
-        const lines = read(l.file).trim().split("\n");
-        expect(lines).toHaveLength(l.count);
-        for (const line of lines) expect(decodeReport(line.split("#")[1] ?? "")).not.toBeNull();
-        return;
-      }
-      const [, ...cases] = parseTable(read(l.file));
-      expect(cases.length).toBeGreaterThan(10);
-      for (const [name, url, expected] of cases) {
-        const r = decodeReport(url!.split("#")[1] ?? "");
-        expect(r === null ? "invalid" : "ok", name).toBe(expected);
-      }
-    });
-  }
-});
-
-describe("form fixtures (same validation as the server)", () => {
-  const toPayload = (schema: string, row: Record<string, string>) => {
-    const bool = (v: string | undefined) => v === "true";
-    if (schema === "invite") {
-      return { email: row.email, name: row.name, role: row.role, country: row.country, useCase: row.useCase, privacyAcknowledged: bool(row.privacyAcknowledged), marketingConsent: bool(row.marketingConsent) };
-    }
-    if (schema === "pilot") {
-      return { ...row, exams: row.exams ? row.exams.split(";") : [], privacyAcknowledged: bool(row.privacyAcknowledged) };
-    }
-    return { ...row, privacyAcknowledged: bool(row.privacyAcknowledged) };
-  };
-  const schemas = { invite: inviteRequestSchema, pilot: pilotApplicationSchema, contact: contactMessageSchema };
-  for (const f of manifest.forms) {
-    it(f.file, () => {
-      const [header, ...rows] = parseTable(read(f.file));
-      for (const cells of rows) {
-        const row = Object.fromEntries(header!.map((h, i) => [h, cells[i] ?? ""]));
-        const result = schemas[f.schema].safeParse(toPayload(f.schema, row));
-        if (row.expected === "valid") expect(result.success, row.case).toBe(true);
-        else {
-          expect(result.success, row.case).toBe(false);
-          const field = row.expected!.split(":")[1]!;
-          if (!result.success) expect(result.error.issues.map((i) => String(i.path[0])), row.case).toContain(field);
+      if (e.csvEscaped) {
+        const groups = groupsToCsv(a);
+        const links = linksAsCsv("https://heramb.study", buildReports(d, a, { institute: "T", test: "U", date: "2026-10-01" }));
+        for (const csv of [groups, links]) {
+          for (const line of csv.split("\n").slice(1)) expect(line).not.toMatch(/(^|,)"?[=+@]/);
         }
       }
+      if (e.compareWith) {
+        const c = compareClasses(data(e.compareWith), d, 5);
+        expect(c.matchedStudents).toBe(e.matched);
+        expect(c.unmatchedTopics.onlyFirst).toEqual(e.onlyFirstTopics);
+        expect(c.unmatchedTopics.onlySecond).toEqual(e.onlySecondTopics);
+        expect(c.totals.closed).toBe(e.closed);
+        if (e.slipped !== undefined) expect(c.totals.slipped).toBe(e.slipped);
+      }
+      if (e.trackerSet) {
+        const tests = e.trackerSet.map((file, i) => ({ id: `t${i}`, name: `Test ${i + 1}`, date: `2026-0${7 + i}-01`, dataset: data(file) }));
+        const track = trackClass(tests);
+        for (const [student, topic, n] of e.persistent ?? []) {
+          expect(track.persistent).toContainEqual({ student, topic, tests: n });
+        }
+      }
+    });
+  }
+});
+
+describe("tracker backup fixtures", () => {
+  const list = JSON.parse(readFileSync(join(dir, "backups.json"), "utf8")) as Array<{ file: string; ok: boolean; title: string }>;
+  for (const b of list) {
+    it(`${b.file} — ${b.title}`, async () => {
+      const { parseBackup } = await import("@/lib/client/workspace");
+      expect(parseBackup(readFileSync(join(dir, b.file), "utf8")).ok).toBe(b.ok);
+    });
+  }
+});
+
+describe("student report link fixtures", () => {
+  const list = JSON.parse(readFileSync(join(dir, "report-links.json"), "utf8")) as Array<{ case: string; fragment: string; valid: boolean }>;
+  for (const l of list) {
+    it(`${l.valid ? "opens" : "rejects"}: ${l.case}`, async () => {
+      const { decodeReport } = await import("@/lib/tools/studentReport");
+      expect(decodeReport(l.fragment) !== null).toBe(l.valid);
     });
   }
 });

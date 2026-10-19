@@ -153,3 +153,9 @@ describe("studentTermReports", () => {
     expect(r10.strengths).toEqual(["Algebra", "Geometry"]);
   });
 });
+
+describe("regression: same-date tests sort naturally", () => {
+  it("puts Unit 2 before Unit 10 when both have the same date", () => {
+    expect(sortTests([{ date: "2026-10-01", name: "Unit 10" }, { date: "2026-10-01", name: "unit 2" }]).map((t) => t.name)).toEqual(["unit 2", "Unit 10"]);
+  });
+});

@@ -3,7 +3,7 @@ import { getProvider, type AiProvider } from "@/lib/ai/providers";
 import { buildPrompt, parseModelOutput, ruleBasedSummary, summaryInputSchema, toSummaryInput } from "@/lib/ai/summary";
 import { __setBackendForTests } from "@/lib/server/backend";
 import { __setAiProviderForTests, handleAiSummary } from "@/lib/server/aiHandler";
-import { MemoryContactStore, MemoryInviteStore, MemoryPilotStore, MemoryRateLimiter } from "@/lib/server/memoryBackend";
+import { MemoryContactStore, MemoryInstituteStore, MemoryInviteStore, MemoryPilotStore, MemoryRateLimiter } from "@/lib/server/memoryBackend";
 import { analyseClass, buildDataset, compareClasses, parseTable, sampleCsv, sampleFollowUpCsv } from "@/lib/tools/classAnalysis";
 
 const ds = (csv: string) => buildDataset(parseTable(csv)).dataset!;
@@ -39,7 +39,7 @@ function fakeProvider(text = GOOD, fail = false): AiProvider & { calls: number }
 }
 
 beforeEach(() => {
-  __setBackendForTests({ kind: "memory", invites: new MemoryInviteStore(), contacts: new MemoryContactStore(), pilots: new MemoryPilotStore(), limiter: new MemoryRateLimiter() });
+  __setBackendForTests({ kind: "memory", invites: new MemoryInviteStore(), contacts: new MemoryContactStore(), pilots: new MemoryPilotStore(), institutes: new MemoryInstituteStore(), limiter: new MemoryRateLimiter() });
   vi.spyOn(console, "info").mockImplementation(() => {});
   vi.spyOn(console, "warn").mockImplementation(() => {});
   vi.spyOn(console, "error").mockImplementation(() => {});

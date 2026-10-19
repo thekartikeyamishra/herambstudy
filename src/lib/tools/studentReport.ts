@@ -7,11 +7,24 @@
  * each link only with that student (or parent).
  */
 import { z } from "zod";
+import { isRealIsoDate } from "@/lib/dates";
+import { CODE_PATTERN } from "@/lib/institute/code";
 import type { ClassAnalysis, Dataset } from "./classAnalysis";
 
 export const REPORT_VERSION = 1;
 
-const text = (max: number) => z.string().max(max);
+/**
+ * Report links are shown on heramb.study, so their text must not carry web addresses
+ * (someone could craft a link saying "pay fees at …") or hidden direction-override
+ * characters that make text display differently from what it is.
+ */
+export const URL_LIKE = /(https?:\/\/|www\.)|\b[a-z0-9-]{2,}\.(com|in|net|org|io|ly|xyz|me|co|info|link|app|site|online|top|click|study)\b/i;
+const UNSAFE_CHARS = /[\u0000-\u001F\u007F\u202A-\u202E\u2066-\u2069]/;
+export function isSafeReportText(v: string): boolean {
+  return !URL_LIKE.test(v) && !UNSAFE_CHARS.test(v);
+}
+const text = (max: number, min = 0) =>
+  z.string().min(min).max(max).refine(isSafeReportText, "Web addresses and hidden characters aren't allowed");
 const pct = z.number().int().min(0).max(100).nullable();
 
 /** Compact wire format (short keys keep links small). */
@@ -19,11 +32,14 @@ export const reportSchema = z.object({
   v: z.literal(REPORT_VERSION),
   i: text(80), // institute / sender name, as typed by the sender (not verified)
   t: text(80), // test name
-  d: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), // test date
-  s: text(80).min(1), // student id (roll number or name)
-  n: z.array(text(80).min(1)).min(1).max(40), // topic names
+  d: z.string().refine((v) => isRealIsoDate(v)), // test date
+  s: text(80, 1), // student id (roll number or name)
+  n: z.array(text(80, 1)).min(1).max(40), // topic names
   p: z.array(pct).max(40), // student's percent per topic (null = absent)
   a: z.array(pct).max(40), // class average per topic
+  // Optional institute code (founding programme). Lets anonymous "report opened / saved /
+  // helped" counts reach the right institute. Older links without it stay valid.
+  c: z.string().regex(CODE_PATTERN).optional(),
 }).refine((r) => r.p.length === r.n.length && r.a.length === r.n.length, "Lengths must match");
 
 export type StudentReport = z.infer<typeof reportSchema>;
@@ -46,10 +62,16 @@ export function encodeReport(r: StudentReport): string {
   return toBase64Url(JSON.stringify(r));
 }
 
+/**
+ * Longest fragment we accept. The largest valid report (40 topic names of 80 Hindi
+ * characters, 3 bytes each in UTF-8) encodes to ~15,000 characters, so this leaves
+ * headroom while still refusing absurd input. Browsers and WhatsApp handle links this long.
+ */
+export const MAX_FRAGMENT_CHARS = 20_000;
+
 export function decodeReport(fragment: string): StudentReport | null {
-  // Chat apps sometimes glue punctuation or spaces onto the end of a copied link.
-  const raw = fragment.replace(/^#/, "").trim().replace(/(%[0-9A-Fa-f]{2}|[^A-Za-z0-9_-])+$/, "");
-  if (!raw || raw.length > 12_000 || !/^[A-Za-z0-9_-]+$/.test(raw)) return null;
+  const raw = fragment.replace(/^#/, "").trim();
+  if (!raw || raw.length > MAX_FRAGMENT_CHARS || !/^[A-Za-z0-9_-]+$/.test(raw)) return null;
   try {
     const parsed = reportSchema.safeParse(JSON.parse(fromBase64Url(raw)));
     return parsed.success ? parsed.data : null;
@@ -62,7 +84,7 @@ export function decodeReport(fragment: string): StudentReport | null {
 export function buildReports(
   data: Dataset,
   analysis: ClassAnalysis,
-  meta: { institute: string; test: string; date: string },
+  meta: { institute: string; test: string; date: string; code?: string | null },
 ): StudentReport[] {
   const n = data.topics.map((t) => t.name.slice(0, 80));
   const a = analysis.topics.map((t) => (t.attempted > 0 ? t.average : null));
@@ -75,6 +97,7 @@ export function buildReports(
     n,
     p: s.percents.map((x) => (x === null || x === undefined ? null : x)),
     a,
+    ...(meta.code ? { c: meta.code } : {}),
   }));
 }
 

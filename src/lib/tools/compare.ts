@@ -25,8 +25,8 @@ export function compareAssessments(rows: CompareRow[], margin: number): {
   const errors: Array<{ index: number; message: string }> = [];
   rows.forEach((r, index) => {
     if (!r.topic.trim() && !r.firstPercent.trim() && !r.secondPercent.trim()) return;
-    const a = Number(r.firstPercent);
-    const b = Number(r.secondPercent);
+    const a = Number(r.firstPercent.trim().replace(/%$/, "").replace(",", "."));
+    const b = Number(r.secondPercent.trim().replace(/%$/, "").replace(",", "."));
     if (!r.topic.trim()) return errors.push({ index, message: "Add a topic name." });
     if (!r.firstPercent.trim() || !r.secondPercent.trim() || !Number.isFinite(a) || !Number.isFinite(b)) {
       return errors.push({ index, message: "Enter both percentages." });

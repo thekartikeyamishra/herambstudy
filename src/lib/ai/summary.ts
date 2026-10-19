@@ -58,12 +58,15 @@ export type SummaryText = z.infer<typeof summaryOutputSchema>;
 export type Summary = SummaryText & { source: "ai" | "rules"; note?: string };
 
 /** Builds the aggregate-only payload from a class analysis (runs in the browser). */
+/** Topic names go to the model, so strip prompt-shaping characters and never send an empty name. */
+const safeTopic = (name: string) => name.slice(0, 80).replace(/[<>{}`]/g, "").trim() || "Unnamed topic";
+
 export function toSummaryInput(a: ClassAnalysis, c: ClassComparison | null = null): SummaryInput {
   return {
     students: a.students.length,
     classAverage: a.classAverage,
     topics: a.topics.slice(0, 40).map((t) => ({
-      name: t.name.slice(0, 80).replace(/[<>{}`]/g, ""),
+      name: safeTopic(t.name),
       average: t.average,
       attempted: t.attempted,
       belowHalf: t.belowHalf.length,
@@ -74,8 +77,8 @@ export function toSummaryInput(a: ClassAnalysis, c: ClassComparison | null = nul
           closed: c.totals.closed,
           stillBelow: c.totals.stillBelow,
           slipped: c.totals.slipped,
-          improved: c.topics.filter((t) => t.verdict === "improved").map((t) => t.name.slice(0, 80)),
-          declined: c.topics.filter((t) => t.verdict === "declined").map((t) => t.name.slice(0, 80)),
+          improved: c.topics.filter((t) => t.verdict === "improved").map((t) => safeTopic(t.name)),
+          declined: c.topics.filter((t) => t.verdict === "declined").map((t) => safeTopic(t.name)),
         }
       : null,
     audience: "teacher",

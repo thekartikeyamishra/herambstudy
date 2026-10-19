@@ -1,8 +1,8 @@
 {
   "name": "heramb-study",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "private": true,
-  "description": "Heramb.study — invite-only launch website. Progress, made visible.",
+  "description": "Heramb.study \u2014 invite-only launch website. Progress, made visible.",
   "engines": {
     "node": ">=22.12.0 <23"
   },
@@ -10,6 +10,7 @@
     "dev": "next dev",
     "dev:memory": "cross-env DEV_MEMORY_STORE=true next dev",
     "build": "next build",
+    "postbuild": "node scripts/assert-no-devtools.mjs",
     "start": "next start",
     "lint": "eslint . --max-warnings=0",
     "typecheck": "tsc --noEmit",
@@ -20,8 +21,7 @@
     "icons": "node scripts/generate-icons.mjs",
     "check": "npm run typecheck && npm run lint && npm run test && npm run build",
     "waitlist": "node scripts/waitlist-admin.mjs",
-    "smoke": "node scripts/smoke.mjs",
-    "smoke:prod": "node scripts/smoke.mjs --production"
+    "smoke:prod": "node scripts/smoke-prod.mjs"
   },
   "dependencies": {
     "firebase-admin": "14.5.0",

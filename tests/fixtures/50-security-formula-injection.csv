@@ -1,0 +1,5 @@
+Roll no,Algebra
+"=HYPERLINK(""http://evil.example"",""click"")",30
++cmd,40
+@SUM(1),60
+-2+3,20

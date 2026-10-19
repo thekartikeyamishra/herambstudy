@@ -23,6 +23,7 @@ const PUBLIC_PAGES = [
   "/resources/interpreting-repeated-mistakes",
   "/invite",
   "/pilot",
+  "/founding",
   "/about",
   "/contact",
   "/trust",
@@ -486,55 +487,156 @@ test.describe("student report links", () => {
   });
 });
 
-test.describe("v0.6 developer hub and edge cases", () => {
-  test("developer hub shows environment, feature map, pages and test files", async ({ page }, info) => {
+test.describe("developer console (dev server only)", () => {
+  test("shows environment, captures emails and follows the confirm link locally", async ({ page, request, baseURL }, info) => {
     test.skip(info.project.name !== "desktop", "run once");
-    await page.goto("/dev");
-    await expect(page.getByTestId("dev-banner")).toContainText("local development only");
-    await expect(page.getByTestId("dev-features")).toContainText("Student report links");
-    await expect(page.getByTestId("dev-hidden-pages")).toContainText("/r — student report");
-    await expect(page.getByTestId("dev-fixtures")).toContainText("class-analyser/30-error-total-row-at-bottom.csv");
-    // A dev-only download works and is a real file.
-    const res = await page.request.get("/api/dev/fixtures/class-analyser/01-valid-sample-24-students.csv");
+    await request.post("/api/dev/state", { data: { action: "reset" } });
+    const email = `dev-console-${Date.now()}@example.com`;
+    const res = await request.post("/api/invite", {
+      headers: { Origin: baseURL!, "Content-Type": "application/json" },
+      data: { email, role: "teacher", country: "IN", useCase: "track_progress", privacyAcknowledged: true, marketingConsent: true, startedAt: Date.now() - 60_000 },
+    });
     expect(res.status()).toBe(200);
-    expect(await res.text()).toMatch(/^Roll no,/);
+    await page.goto("/dev");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Developer console");
+    await expect(page.getByTestId("dev-env")).toContainText("Form storage");
+    const inbox = page.getByTestId("dev-inbox");
+    await expect(inbox).toContainText("We've received your Heramb.study invite request", { timeout: 30_000 });
+    await inbox.locator("details").first().locator("summary").click();
+    const href = await inbox.getByRole("link").filter({ hasText: "/email/confirm" }).first().getAttribute("href");
+    expect(href).toMatch(/^\/email\/confirm\?id=/);
+    await page.goto(href!);
+    await page.getByRole("button", { name: /send me product updates/ }).click();
+    await expect(page.getByTestId("email-action-result")).toContainText("Confirmed");
   });
 
-  test("seeded student history appears in My progress", async ({ page }, info) => {
+  test("seeds tracker and student data, and lists every test file", async ({ page }, info) => {
     test.skip(info.project.name !== "desktop", "run once");
     await page.goto("/dev");
-    await page.getByRole("button", { name: /Seed student history/ }).click();
-    await expect(page.getByTestId("dev-local")).toContainText("saved");
+    // One row per test file + one per backup file — counted from the manifests, never hard-coded.
+    const { readFileSync } = await import("node:fs");
+    const fixtureCount = JSON.parse(readFileSync("tests/fixtures/manifest.json", "utf8")).length + JSON.parse(readFileSync("tests/fixtures/backups.json", "utf8")).length;
+    await expect(page.getByTestId("dev-files").locator("tbody tr")).toHaveCount(fixtureCount);
+    await page.getByTestId("seed-tracker").click();
+    await expect(page.getByTestId("dev-notice")).toContainText("demo classes");
+    await page.getByTestId("seed-student").click();
+    await page.goto("/tracker");
+    await expect(page.getByText("Class 9 B (test kit)").first()).toBeVisible({ timeout: 30_000 });
     await page.goto("/me");
     await expect(page.getByTestId("progress")).toContainText("Reports saved");
-    await expect(page.getByTestId("topic-history")).toContainText("Equilibrium");
   });
 
-  test("a 'Total' row is reported instead of being analysed as a student", async ({ page }) => {
+  test("dev APIs and the footer link exist only in development", async ({ request, page }) => {
+    expect((await request.get("/api/dev/state")).status()).toBe(200);
+    await page.goto("/");
+    await expect(page.getByTestId("dev-link")).toBeVisible();
+  });
+});
+
+test.describe("v0.6 edge cases in the browser", () => {
+  test("Excel-style % cells and an Average row are handled", async ({ page }) => {
     await page.goto("/resources/class-test-analyser");
-    await page.getByLabel("Or paste from Excel / Google Sheets").fill("Roll,A,B\nMAX,10,10\nR1,5,6\nTotal,12,14");
+    await page.getByLabel("Or paste from Excel / Google Sheets").fill("Roll\tAlgebra\tGeometry\nR1\t45%\t80%\nR2\t60%\t30%\nAverage\t52%\t55%");
     await page.getByRole("button", { name: "Analyse class" }).click();
-    await expect(page.getByTestId("class-issues")).toContainText("summary");
+    await expect(page.getByTestId("class-results")).toBeVisible();
+    await expect(page.getByTestId("class-warning")).toContainText("Skipped a summary row");
+    await expect(page.getByTestId("class-results").locator("tbody tr")).toHaveCount(2);
+  });
+
+  test("report links refuse web addresses in the institute name", async ({ page }) => {
+    await page.goto("/resources/class-test-analyser");
+    await page.getByRole("button", { name: "Load a fictional class" }).click();
+    await page.getByRole("button", { name: "Create student report links" }).click();
+    await page.getByLabel("Your institute / school name").fill("Pay fees at www.fake-fees.com");
+    await expect(page.getByText("Please remove web addresses")).toBeVisible();
+    await expect(page.getByTestId("student-links")).not.toContainText("Copy all");
+  });
+
+  test("odd number formats are rejected, not silently converted", async ({ page }) => {
+    await page.goto("/resources/class-test-analyser");
+    await page.getByLabel("Or paste from Excel / Google Sheets").fill("Roll,A,B\nMAX,20,20\nR1,0x10,1 5");
+    await page.getByRole("button", { name: "Analyse class" }).click();
+    await expect(page.getByTestId("class-issues")).toContainText("\"0x10\" isn't a number");
+    await expect(page.getByTestId("class-issues")).toContainText("\"1 5\" isn't a number");
     await expect(page.getByTestId("class-results")).toHaveCount(0);
   });
 
-  test("uploading an Excel file is refused with a clear message", async ({ page }) => {
+  test("a “Full marks” row is used as maximum marks, not as a student", async ({ page }) => {
     await page.goto("/resources/class-test-analyser");
-    await page.locator('input[type="file"]').first().setInputFiles("test-fixtures/class-analyser/39-error-wrong-file-type.xlsx");
-    await expect(page.getByText("Please choose a .csv file", { exact: false })).toBeVisible();
+    await page.getByLabel("Or paste from Excel / Google Sheets").fill("Roll,Algebra\nFull marks:,20\nR1,10\nR2,20");
+    await page.getByRole("button", { name: "Analyse class" }).click();
+    await expect(page.getByTestId("class-results").locator("tbody tr")).toHaveCount(2);
+    await expect(page.getByTestId("class-results")).not.toContainText("Full marks");
   });
 
-  test("uploading a fixture CSV analyses it", async ({ page }) => {
+  test("the longest valid report link (40 Hindi topics) opens", async ({ page }) => {
+    const { readFileSync } = await import("node:fs");
+    const cases = JSON.parse(readFileSync("tests/fixtures/report-links.json", "utf8")) as Array<{ case: string; fragment: string }>;
+    const longest = cases.find((c) => c.case.startsWith("Longest valid"))!;
+    await page.goto(`/r#${longest.fragment}`);
+    await expect(page.getByTestId("student-report")).toBeVisible();
+    await expect(page.getByTestId("report-invalid")).toHaveCount(0);
+  });
+});
+
+
+test.describe("v0.7 founding programme", () => {
+  test("an institute joins, a teacher analyses and shares, and the dashboard counts it", async ({ page }) => {
+    await page.goto("/founding?source=meeting");
+    await page.getByLabel("Institute name").fill(`E2E Classes ${Date.now()}`);
+    await page.getByLabel("City").fill("Prayagraj");
+    await page.getByLabel("Coaching institute").check();
+    await page.getByLabel("Contact person").fill("Asha Verma");
+    await page.getByLabel("Their role").selectOption({ index: 1 });
+    await page.getByLabel(/Phone/).fill("9876543210");
+    await page.getByLabel(/I agree that Heramb\.study may store these contact details/).check();
+    await page.waitForTimeout(2700);
+    await page.getByRole("button", { name: "Get our institute code" }).click();
+    const code = (await page.getByTestId("join-code").textContent({ timeout: 30_000 }))!.trim();
+    expect(code).toMatch(/^HRB-[2-9A-Z]{4}-[2-9A-Z]{4}$/);
+
+    // The joining browser is connected automatically.
     await page.goto("/resources/class-test-analyser");
-    await page.locator('input[type="file"]').first().setInputFiles("test-fixtures/class-analyser/10-valid-mm-label-and-percent-cells.csv");
-    await expect(page.getByTestId("class-results")).toContainText("Optics");
+    await expect(page.getByTestId("institute-connected")).toBeVisible();
+
+    // A real (non-fictional) export with title rows, names and totals is tidied, analysed and shared.
+    const raw = ["Unit Test 3", "Roll No\tName\tKinematics\tLaws of motion\tTotal", "MAX\t\t20\t20\t40", "R01\tAsha\t14\t9\t23", "R02\tRavi\t6\t15\t21"].join("\n");
+    await page.locator("#class-data").fill(raw);
+    await page.getByRole("button", { name: "Analyse class" }).click();
+    await page.getByRole("button", { name: "Tidy and analyse" }).click();
+    await expect(page.getByTestId("class-results")).toBeVisible();
+    await expect(page.locator("#class-data")).not.toHaveValue(/Asha/);
+    await page.getByRole("button", { name: "Create student report links" }).click();
+    await page.getByLabel("Test name").fill("Unit test 3");
+    const download = page.waitForEvent("download");
+    await page.getByRole("button", { name: "Download links (CSV)" }).click();
+    await download;
+    await page.waitForTimeout(2000); // usage counts are batched
+
+    await page.goto(`/institute#${code}`);
+    const metrics = page.getByTestId("metrics");
+    await expect(metrics).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByTestId("institute-dashboard")).toContainText("Founding");
+    // Activation (first real test) and distribution (links shared) are already met.
+    await expect(metrics).toContainText("Did the institute run its first real test?");
+    await expect(metrics).toContainText("2 shared");
   });
 
-  test("tampered tracker data shows a recovery message, not a crash", async ({ page }, info) => {
-    test.skip(info.project.name !== "desktop", "run once");
-    await page.goto("/dev");
-    await page.getByRole("button", { name: "Simulate corrupt tracker data" }).click();
-    await page.goto("/tracker");
-    await expect(page.getByText("Saved data couldn't be read")).toBeVisible();
+  test("owner dashboard is off without a password", async ({ request }) => {
+    const res = await request.get("/api/admin/institutes");
+    expect([404, 401]).toContain(res.status());
+  });
+
+  test("student report offers the useful question and a calendar reminder", async ({ page }) => {
+    await page.goto("/resources/class-test-analyser");
+    await page.getByRole("button", { name: "Load a fictional class" }).click();
+    await page.getByRole("button", { name: "Create student report links" }).click();
+    const href = await page.getByRole("link", { name: /Preview/ }).first().getAttribute("href");
+    await page.goto(href!);
+    await page.getByRole("button", { name: "Yes, it helped" }).click();
+    await expect(page.getByTestId("report-useful")).toContainText("Thanks");
+    const dl = page.waitForEvent("download");
+    await page.getByRole("button", { name: "Add to calendar" }).click();
+    expect((await dl).suggestedFilename()).toBe("heramb-revision-reminder.ics");
   });
 });

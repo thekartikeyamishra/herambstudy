@@ -35,14 +35,6 @@ export default defineConfig({
       RATE_LIMIT_PILOT_PER_IP: "100",
       // Signed links work without an email provider; no email is actually sent in tests.
       EMAIL_TOKEN_SECRET: "e2e-email-token-secret-0123456789abcdef",
-      // Pin everything a developer's .env.development.local might change, so results are reproducible.
-      // (Real environment variables take precedence over .env files in Next.js.)
-      AI_PROVIDER: "none",
-      EMAIL_DEV_OUTBOX: "false",
-      NEXT_PUBLIC_ADS_PREVIEW: "false",
-      NEXT_PUBLIC_GA_MEASUREMENT_ID: "",
-      NEXT_PUBLIC_GOOGLE_PLAY_URL: "",
-      NEXT_PUBLIC_APP_STORE_URL: "",
     },
   },
 });

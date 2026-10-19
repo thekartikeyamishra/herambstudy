@@ -22,35 +22,30 @@ export type Dataset = {
   assumedPercent: boolean;
 };
 
-const ABSENT = new Set(["", "-", "—", "ab", "abs", "absent", "na", "n/a", "x"]);
+export const ABSENT = new Set(["", "-", "—", "–", "ab", "abs", "absent", "na", "n/a", "x"]);
+export const MAX_ROW = /^(max(imum)?|max(imum)?\s+marks|full\s+marks|total\s+marks|marks\s+out\s+of|out\s+of|total)\s*:?$/i;
+/** Summary rows teachers often leave at the bottom of a sheet. They are skipped, never counted as students. */
+const SUMMARY_ROW = /^(class\s+)?(average|avg|mean|median|total|sum|highest|lowest|max(imum)?|min(imum)?)(\s+marks)?\s*:?$/i;
+/** Invisible characters that sneak in from Word, WhatsApp and web pages. */
+const INVISIBLE = /[​-‍⁠﻿]/g;
 
-/** Labels for the optional maximum-marks row (Indian usage includes "M.M." and "Full marks"). */
-export const MAX_ROW = /^(max|max\.?\s*marks|maximum(\s*marks)?|m\.?\s*m\.?|full\s*marks|f\.?\s*m\.?|out\s*of|total\s*marks|total)$/i;
-/** Summary rows that teachers often leave at the bottom of a marks sheet. */
-const SUMMARY_ROW = /^(total|grand\s*total|sum|average|avg\.?|class\s*average|mean|highest|lowest|min(imum)?|max(imum)?)$/i;
-/** Header names that are identifiers, not topics (a second ID column would be analysed as marks). */
-const ID_COLUMN = /^(roll(\s*no\.?|\s*number)?|name|student(\s*name)?|admission(\s*no\.?)?|adm\.?\s*no\.?|s\.?\s*no\.?|sr\.?\s*no\.?|serial(\s*no\.?)?|section|class|batch|father'?s?\s*name|enrol+ment(\s*no\.?)?|reg(istration)?\.?\s*no\.?|id)$/i;
-/** Header names that are totals or results, not topics (they would double-count marks). */
-const TOTAL_COLUMN = /^(total|grand\s*total|overall|percentage|percent|%|aggregate|rank|position|grade|result|marks\s*obtained|obtained|sum|average|avg\.?)$/i;
-
-/** Rejects pasted or uploaded text above the size limit (protects the browser and saved data). */
-export function checkTextSize(text: string): string | null {
-  const bytes = new TextEncoder().encode(text).byteLength;
-  return bytes > LIMITS.bytes
-    ? `That's ${(bytes / 1_000_000).toFixed(1)} MB — the limit is 1 MB. Remove extra columns or split the class into smaller groups.`
-    : null;
-}
-
-/** Splits delimited text into rows of cells. Handles quotes, CRLF and BOM. */
+/**
+ * Splits delimited text into rows of cells. Handles quotes, CRLF, BOM, invisible
+ * characters, line breaks inside quoted cells, and the empty trailing columns Excel
+ * often adds to CSV exports.
+ */
 export function parseTable(text: string): string[][] {
-  const clean = text.replace(/^﻿/, "").replace(/\r\n?/g, "\n");
-  const firstLine = clean.split("\n").find((l) => l.trim().length > 0) ?? "";
-  const delimiter = firstLine.includes("\t")
+  const clean = text.replace(INVISIBLE, "").replace(/\r\n?/g, "\n");
+  // Look at the first few non-empty lines, not just the first: exports often start with a
+  // one-cell title row ("Unit Test 3 — Results") that has no delimiter at all.
+  const head = clean.split("\n").filter((l) => l.trim().length > 0).slice(0, 5).join("\n");
+  const delimiter = head.includes("\t")
     ? "\t"
-    : (firstLine.match(/;/g)?.length ?? 0) > (firstLine.match(/,/g)?.length ?? 0)
+    : (head.match(/;/g)?.length ?? 0) > (head.match(/,/g)?.length ?? 0)
       ? ";"
       : ",";
 
+  const tidy = (c: string) => c.replace(/\s+/g, " ").trim();
   const rows: string[][] = [];
   let row: string[] = [];
   let cell = "";
@@ -68,51 +63,68 @@ export function parseTable(text: string): string[][] {
       inQuotes = true;
       cell = "";
     } else if (ch === delimiter) {
-      row.push(cell.trim());
+      row.push(tidy(cell));
       cell = "";
     } else if (ch === "\n") {
-      row.push(cell.trim());
+      row.push(tidy(cell));
       rows.push(row);
       row = [];
       cell = "";
     } else cell += ch;
   }
-  row.push(cell.trim());
+  row.push(tidy(cell));
   rows.push(row);
-  return rows.filter((r) => r.some((c) => c.length > 0));
+  const nonEmpty = rows.filter((r) => r.some((c) => c.length > 0));
+
+  // Drop trailing columns that are empty in every row (Excel exports ",,," for formatted but empty columns).
+  let width = Math.max(0, ...nonEmpty.map((r) => r.length));
+  while (width > 1 && nonEmpty.every((r) => !(r[width - 1] ?? ""))) width--;
+  return nonEmpty.map((r) => r.slice(0, width));
 }
 
-const NUMBER = /^[+-]?(\d+(\.\d*)?|\.\d+)$/;
+type Cell = { kind: "empty" } | { kind: "number"; value: number } | { kind: "percent"; value: number } | { kind: "invalid" };
 
-/**
- * Strict number parsing: plain decimals only (a single decimal comma is allowed).
- * Rejects things Number() would silently accept, such as "0x10", "1e3" or "Infinity".
- * A trailing "%" is returned separately so it can be converted against the topic maximum.
- */
-function toNumber(raw: string): { value: number; percent: boolean } | null | "invalid" {
-  let v = raw.trim().replace(/\s+/g, "");
-  if (ABSENT.has(v.toLowerCase())) return null;
-  const percent = v.endsWith("%");
-  if (percent) v = v.slice(0, -1);
-  if ((v.match(/,/g) ?? []).length === 1 && !v.includes(".")) v = v.replace(",", ".");
-  if (!NUMBER.test(v)) return "invalid";
-  const n = Number(v);
-  return Number.isFinite(n) ? { value: n, percent } : "invalid";
+/** Reads one score cell: plain numbers, "45%", "15/20", decimal commas and Unicode minus signs. */
+/** Plain decimal numbers only: "14", "-2", "7.5", "7,5", "+5". Rejects hex (0x10), exponents (1e3), "Infinity". */
+const DECIMAL = /^[+-]?\d+(?:[.,]\d+)?$/;
+
+function readCell(raw: string): Cell {
+  // Spaces are allowed only around "/" and before "%" ("15 / 20", "70 %"); a space inside a
+  // number ("1 5") is a typo and must not silently become 15.
+  const v = raw.trim().replace(/^[−–‒]/, "-").replace(/\s*\/\s*/g, "/").replace(/\s+%$/, "%");
+  if (ABSENT.has(v.toLowerCase())) return { kind: "empty" };
+  const pct = /^(-?\d+(?:[.,]\d+)?)%$/.exec(v);
+  if (pct) return { kind: "percent", value: Number(pct[1]!.replace(",", ".")) };
+  const frac = /^(-?\d+(?:[.,]\d+)?)\/(\d+(?:[.,]\d+)?)$/.exec(v);
+  if (frac) {
+    const den = Number(frac[2]!.replace(",", "."));
+    return den > 0 ? { kind: "percent", value: (Number(frac[1]!.replace(",", ".")) / den) * 100 } : { kind: "invalid" };
+  }
+  if (!DECIMAL.test(v)) return { kind: "invalid" };
+  return { kind: "number", value: Number(v.replace(",", ".")) };
 }
 
-export function buildDataset(rows: string[][]): { dataset: Dataset | null; issues: ParseIssue[] } {
+const round2 = (n: number) => Math.round(n * 100) / 100;
+const looksNumeric = (s: string) => readCell(s).kind === "number" || readCell(s).kind === "percent";
+
+export function buildDataset(rows: string[][]): { dataset: Dataset | null; issues: ParseIssue[]; warnings: string[] } {
   const issues: ParseIssue[] = [];
+  const warnings: string[] = [];
+  const fail = (list: ParseIssue[]) => ({ dataset: null, issues: list, warnings });
   if (rows.length < 2) {
-    return { dataset: null, issues: [{ row: 1, message: "Add a header row with topic names and at least one student row." }] };
+    return fail([{ row: 1, message: "Add a header row with topic names and at least one student row." }]);
   }
 
   const header = rows[0]!;
   const topicNames = header.slice(1).map((t) => t.slice(0, LIMITS.cellChars));
   if (topicNames.length === 0 || topicNames.every((t) => !t)) {
-    return { dataset: null, issues: [{ row: 1, message: "The header row needs at least one topic name after the student column." }] };
+    return fail([{ row: 1, message: "The header row needs at least one topic name after the student column." }]);
   }
   if (topicNames.length > LIMITS.topics) {
-    return { dataset: null, issues: [{ row: 1, message: `Please use at most ${LIMITS.topics} topics.` }] };
+    return fail([{ row: 1, message: `Please use at most ${LIMITS.topics} topics.` }]);
+  }
+  if (topicNames.every((t) => t && looksNumeric(t))) {
+    return fail([{ row: 1, message: "The first row looks like marks, not topic names. Add a header row: “Roll no”, then one topic name per column." }]);
   }
   const seen = new Set<string>();
   topicNames.forEach((t, i) => {
@@ -120,81 +132,87 @@ export function buildDataset(rows: string[][]): { dataset: Dataset | null; issue
     const key = t.toLowerCase();
     if (t && seen.has(key)) issues.push({ row: 1, column: i + 2, message: `Topic "${t}" appears twice.` });
     seen.add(key);
-    if (t && ID_COLUMN.test(t)) {
-      issues.push({ row: 1, column: i + 2, message: `"${t}" looks like an ID column, not a topic. Keep one ID column (the first) and delete this one.` });
-    } else if (t && TOTAL_COLUMN.test(t)) {
-      issues.push({ row: 1, column: i + 2, message: `"${t}" looks like a total or result column, not a topic. Delete it — totals are worked out for you.` });
-    }
   });
 
-  let body = rows.slice(1);
+  let body = rows.slice(1).map((cells, i) => ({ cells, rowNo: i + 2 }));
   let maxes = topicNames.map(() => 100);
   let assumedPercent = true;
-  if (body[0] && MAX_ROW.test(body[0][0] ?? "")) {
+  let maxLabel = "";
+  if (body[0] && MAX_ROW.test(body[0].cells[0] ?? "")) {
     assumedPercent = false;
+    maxLabel = body[0].cells[0] ?? "";
     maxes = topicNames.map((_, i) => {
-      const n = toNumber(body[0]![i + 1] ?? "");
-      if (n === null || n === "invalid" || n.percent || n.value <= 0) {
-        issues.push({ row: 2, column: i + 2, message: "Maximum marks must be a number above 0." });
+      const c = readCell(body[0]!.cells[i + 1] ?? "");
+      if (c.kind !== "number" || c.value <= 0) {
+        issues.push({ row: 2, column: i + 2, message: "Maximum marks must be a plain number above 0." });
         return 1;
       }
-      return n.value;
+      return c.value;
     });
     body = body.slice(1);
   }
 
-  if (body.length === 0) issues.push({ row: 2, message: "Add at least one student row." });
-  if (body.length > LIMITS.students) {
-    return { dataset: null, issues: [{ row: 1, message: `Please analyse at most ${LIMITS.students} students at a time.` }] };
+  // Skip summary rows such as "Average" or "Total" — counting them as students would skew every average.
+  const skipped = body.filter((b) => SUMMARY_ROW.test(b.cells[0] ?? ""));
+  if (skipped.length) {
+    body = body.filter((b) => !SUMMARY_ROW.test(b.cells[0] ?? ""));
+    warnings.push(`Skipped ${skipped.length === 1 ? "a summary row" : `${skipped.length} summary rows`} (${skipped.map((b) => `row ${b.rowNo} “${b.cells[0]}”`).join(", ")}) — not counted as students.`);
+    const misplacedMax = skipped.find((b) => MAX_ROW.test(b.cells[0] ?? ""));
+    if (assumedPercent && misplacedMax) {
+      warnings.push(`Row ${misplacedMax.rowNo} “${misplacedMax.cells[0]}” looks like maximum marks, but it isn't directly under the header, so all values are being read as percentages. If it holds maximum marks, move it to row 2.`);
+    }
   }
 
-  const rowOffset = assumedPercent ? 2 : 3;
+  if (body.length === 0) issues.push({ row: 2, message: "Add at least one student row." });
+  if (body.length > LIMITS.students) {
+    return fail([{ row: 1, message: `Please analyse at most ${LIMITS.students} students at a time.` }]);
+  }
+
+  const unnamed = body.filter((b) => !(b.cells[0] ?? "").trim()).length;
+  if (unnamed) warnings.push(`${unnamed} row${unnamed === 1 ? " has" : "s have"} no roll number and ${unnamed === 1 ? "was" : "were"} named “Student 1”, “Student 2”… by position. Add roll numbers so reports and the tracker match the right student.`);
+
+  let maxHintGiven = false;
   const ids = new Set<string>();
-  const students = body.map((r, idx) => {
-    const rowNo = idx + rowOffset;
-    const id = (r[0] ?? "").slice(0, LIMITS.cellChars);
-    if (!id) issues.push({ row: rowNo, column: 1, message: "This row has no roll number or name. Every student needs one, so tests can be compared later." });
-    else if (SUMMARY_ROW.test(id) || MAX_ROW.test(id)) {
-      issues.push({ row: rowNo, column: 1, message: `"${id}" looks like a summary or maximum-marks row, not a student. A MAX row must come straight after the header; delete any total/average rows.` });
-      return { id, scores: topicNames.map(() => null) }; // one clear message for this row, not one per cell
-    }
-    if (id && ids.has(id.toLowerCase())) issues.push({ row: rowNo, column: 1, message: `"${id}" appears more than once.` });
+  const students = body.map(({ cells: r, rowNo }, idx) => {
+    const id = (r[0] ?? "").slice(0, LIMITS.cellChars) || `Student ${idx + 1}`;
+    if (ids.has(id.toLowerCase())) issues.push({ row: rowNo, column: 1, message: `"${id}" appears more than once.` });
     ids.add(id.toLowerCase());
     if (r.length - 1 > topicNames.length) issues.push({ row: rowNo, message: "This row has more values than there are topics." });
     const scores = topicNames.map((_, i) => {
-      const parsed = toNumber(r[i + 1] ?? "");
-      if (parsed === "invalid") {
-        issues.push({ row: rowNo, column: i + 2, message: `"${r[i + 1]}" isn't a number. Use a number (e.g. 14 or 7.5), "75%", or leave blank / "AB" if absent.` });
+      const raw = r[i + 1] ?? "";
+      const c = readCell(raw);
+      if (c.kind === "empty") return null;
+      if (c.kind === "invalid") {
+        issues.push({ row: rowNo, column: i + 2, message: `"${raw}" isn't a number. Use marks (e.g. 14), a percentage (e.g. 70%), or leave it blank / "AB" if absent.` });
         return null;
       }
-      if (parsed === null) return null;
-      // "75%" means 75% of this topic's maximum (or simply 75 when values are percentages).
-      const n = parsed.percent ? Math.round(((parsed.value / 100) * maxes[i]!) * 100) / 100 : parsed.value;
-      if (parsed.percent && (parsed.value < 0 || parsed.value > 100)) {
-        issues.push({ row: rowNo, column: i + 2, message: `${parsed.value}% isn't between 0% and 100%.` });
-        return null;
-      }
-      {
-        const max = maxes[i]!;
-        if (n > max) {
-          issues.push({
-            row: rowNo,
-            column: i + 2,
-            message: assumedPercent
+      const max = maxes[i]!;
+      // Percent cells ("70%", "14/20") are converted to marks out of this topic's maximum.
+      const n = c.kind === "percent" ? round2((c.value / 100) * max) : c.value;
+      if (n > max) {
+        // A percentage or fraction cell ("120%", "25/20") is above full marks whatever the MAX row says.
+        let message =
+          c.kind === "percent"
+            ? `“${raw}” is more than 100% — please check it.`
+            : assumedPercent
               ? `${n} is above 100. If these are marks, add a MAX row under the header (see the template).`
-              : `${n} is above the maximum of ${max}.`,
-          });
-        } else if (n < -max) issues.push({ row: rowNo, column: i + 2, message: `${n} is below the lowest possible score.` });
-      }
+              : `${n} is above the maximum of ${max}.`;
+        if (c.kind !== "percent" && !assumedPercent && !maxHintGiven) {
+          message += ` (Row 2 “${maxLabel}” was read as the maximum marks. If that row is a student, rename it.)`;
+          maxHintGiven = true;
+        }
+        issues.push({ row: rowNo, column: i + 2, message });
+      } else if (n < -max) issues.push({ row: rowNo, column: i + 2, message: `${n} is below the lowest possible score.` });
       return n;
     });
     return { id, scores };
   });
 
-  if (issues.length) return { dataset: null, issues: issues.slice(0, 50) };
+  if (issues.length) return fail(issues.slice(0, 50));
   return {
     dataset: { topics: topicNames.map((name, i) => ({ name, max: maxes[i]! })), students, assumedPercent },
     issues: [],
+    warnings,
   };
 }
 

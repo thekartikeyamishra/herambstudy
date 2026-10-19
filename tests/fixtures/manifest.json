@@ -1,0 +1,574 @@
+[
+ {
+  "file": "01-valid-marks-with-max.csv",
+  "area": "Class analyser",
+  "type": "happy",
+  "title": "Standard class: marks with a MAX row",
+  "where": "/resources/class-test-analyser",
+  "how": "Upload or paste, press Analyse class",
+  "expect": {
+   "ok": true,
+   "students": 24,
+   "topics": 6,
+   "assumedPercent": false
+  },
+  "expected": "Teaching plan, gap map and reports appear. Weakest topics (Equilibrium, Chemical bonding) are marked 'Reteach to whole class'."
+ },
+ {
+  "file": "02-percentages-no-max.csv",
+  "area": "Class analyser",
+  "type": "happy",
+  "title": "Percentages without a MAX row",
+  "where": "/resources/class-test-analyser",
+  "how": "Upload, analyse",
+  "expect": {
+   "ok": true,
+   "students": 15,
+   "topics": 3,
+   "assumedPercent": true
+  },
+  "expected": "Note 'No MAX row found, so values were read as percentages.' Rotational motion is the weakest."
+ },
+ {
+  "file": "03-excel-percent-cells.tsv",
+  "area": "Class analyser",
+  "type": "edge",
+  "title": "Cells copied from Excel as '45%' (tab-separated)",
+  "where": "/resources/class-test-analyser",
+  "how": "Open in Excel, copy all, paste into the box",
+  "expect": {
+   "ok": true,
+   "students": 10,
+   "topics": 3,
+   "assumedPercent": true
+  },
+  "expected": "Accepted (fixed in v0.6 — previously every cell was rejected)."
+ },
+ {
+  "file": "04-negative-marking.csv",
+  "area": "Class analyser",
+  "type": "edge",
+  "title": "Negative marking, incl. Unicode minus (−) and en dash (–)",
+  "where": "/resources/class-test-analyser",
+  "how": "Upload, analyse",
+  "expect": {
+   "ok": true,
+   "students": 5,
+   "topics": 3
+  },
+  "expected": "Accepted. Negative scores count as 0% for percentages; gap map shows 0 for them."
+ },
+ {
+  "file": "05-absent-variants.csv",
+  "area": "Class analyser",
+  "type": "edge",
+  "title": "Absent written as blank, AB, absent, -, NA, n/a",
+  "where": "/resources/class-test-analyser",
+  "how": "Upload, analyse",
+  "expect": {
+   "ok": true,
+   "students": 6,
+   "topics": 2
+  },
+  "expected": "All read as absent ('—' in the gap map), not as zero."
+ },
+ {
+  "file": "06-semicolon-decimal-comma.csv",
+  "area": "Class analyser",
+  "type": "edge",
+  "title": "European CSV: semicolons and decimal commas",
+  "where": "/resources/class-test-analyser",
+  "how": "Upload, analyse",
+  "expect": {
+   "ok": true,
+   "students": 3,
+   "topics": 2
+  },
+  "expected": "7,5 read as 7.5."
+ },
+ {
+  "file": "07-quoted-cells-and-bom.csv",
+  "area": "Class analyser",
+  "type": "edge",
+  "title": "UTF-8 BOM, commas and quotes inside topic names",
+  "where": "/resources/class-test-analyser",
+  "how": "Upload, analyse",
+  "expect": {
+   "ok": true,
+   "students": 2,
+   "topics": 3
+  },
+  "expected": "Topic names: 'Work, energy & power' and 'Say \"hi\" topic' appear intact."
+ },
+ {
+  "file": "08-hindi-names-unicode.csv",
+  "area": "Class analyser + report links",
+  "type": "edge",
+  "title": "Hindi (Devanagari) and accented names",
+  "where": "/resources/class-test-analyser",
+  "how": "Analyse, then Create student report links and open one",
+  "expect": {
+   "ok": true,
+   "students": 4,
+   "topics": 3,
+   "linksOk": 4
+  },
+  "expected": "Names display correctly in the gap map and inside each student's report link."
+ },
+ {
+  "file": "09-excel-trailing-empty-columns.csv",
+  "area": "Class analyser",
+  "type": "edge",
+  "title": "Excel CSV with empty trailing columns and an empty row",
+  "where": "/resources/class-test-analyser",
+  "how": "Upload, analyse",
+  "expect": {
+   "ok": true,
+   "students": 2,
+   "topics": 2
+  },
+  "expected": "Accepted (fixed in v0.6 — previously 'Topic name is empty')."
+ },
+ {
+  "file": "10-summary-rows-average-total.csv",
+  "area": "Class analyser",
+  "type": "edge",
+  "title": "'Class average' and 'Highest' rows at the bottom",
+  "where": "/resources/class-test-analyser",
+  "how": "Upload, analyse",
+  "expect": {
+   "ok": true,
+   "students": 3,
+   "topics": 2,
+   "warning": "Skipped 2 summary rows"
+  },
+  "expected": "Notice: 'Skipped 2 summary rows … not counted as students' (fixed in v0.6 — previously counted as students)."
+ },
+ {
+  "file": "11-fraction-cells.csv",
+  "area": "Class analyser",
+  "type": "edge",
+  "title": "Cells written as 15/20",
+  "where": "/resources/class-test-analyser",
+  "how": "Upload, analyse",
+  "expect": {
+   "ok": true,
+   "students": 2,
+   "topics": 2
+  },
+  "expected": "15/20 read as 15 marks (75%)."
+ },
+ {
+  "file": "12-crlf-windows-line-endings.csv",
+  "area": "Class analyser",
+  "type": "edge",
+  "title": "Windows line endings (CRLF)",
+  "where": "/resources/class-test-analyser",
+  "how": "Upload, analyse",
+  "expect": {
+   "ok": true,
+   "students": 2,
+   "topics": 2
+  },
+  "expected": "Accepted."
+ },
+ {
+  "file": "13-all-absent-topic.csv",
+  "area": "Class analyser",
+  "type": "edge",
+  "title": "A topic nobody attempted",
+  "where": "/resources/class-test-analyser",
+  "how": "Upload, analyse",
+  "expect": {
+   "ok": true,
+   "students": 3,
+   "topics": 2,
+   "noDataTopic": "Optics"
+  },
+  "expected": "Optics shows 'No data' (not a 0% learning gap) and is listed last in the plan."
+ },
+ {
+  "file": "14-single-student-single-topic.csv",
+  "area": "Class analyser",
+  "type": "edge",
+  "title": "Smallest possible class",
+  "where": "/resources/class-test-analyser",
+  "how": "Upload, analyse",
+  "expect": {
+   "ok": true,
+   "students": 1,
+   "topics": 1
+  },
+  "expected": "Works; Algebra is 'Reteach to whole class' (1 of 1 below 50%)."
+ },
+ {
+  "file": "15-limit-500-students-40-topics.csv",
+  "area": "Class analyser",
+  "type": "edge",
+  "title": "Exactly at the limits: 500 students × 40 topics",
+  "where": "/resources/class-test-analyser",
+  "how": "Upload, analyse; note how long it takes",
+  "expect": {
+   "ok": true,
+   "students": 500,
+   "topics": 40
+  },
+  "expected": "Analyses in a few seconds; page stays responsive."
+ },
+ {
+  "file": "16-full-marks-label.csv",
+  "area": "Class analyser",
+  "type": "edge",
+  "title": "Maximum-marks row labelled “Full marks:”",
+  "where": "/resources/class-test-analyser",
+  "how": "Upload, analyse",
+  "expect": {
+   "ok": true,
+   "students": 3,
+   "topics": 2,
+   "assumedPercent": false
+  },
+  "expected": "Row 2 is used as maximum marks (not a student). 3 students analysed; R2 Algebra = 50%."
+ },
+ {
+  "file": "17-misplaced-max-row.csv",
+  "area": "Class analyser",
+  "type": "edge",
+  "title": "MAX row at the bottom instead of row 2",
+  "where": "/resources/class-test-analyser",
+  "how": "Upload, analyse, read the warning",
+  "expect": {
+   "ok": true,
+   "students": 3,
+   "assumedPercent": true,
+   "warning": "looks like maximum marks"
+  },
+  "expected": "Analysis runs but a warning says the MAX row isn't under the header, so values are read as percentages, and tells you to move it to row 2."
+ },
+ {
+  "file": "18-missing-roll-numbers.csv",
+  "area": "Class analyser",
+  "type": "edge",
+  "title": "Some rows have no roll number",
+  "where": "/resources/class-test-analyser",
+  "how": "Upload, analyse, read the warning",
+  "expect": {
+   "ok": true,
+   "students": 4,
+   "warning": "no roll number"
+  },
+  "expected": "Analysis runs; a warning says 2 rows were named “Student …” by position and asks for roll numbers."
+ },
+ {
+  "file": "19-hindi-40-long-topics.csv",
+  "area": "Student report links",
+  "type": "edge",
+  "title": "40 long Hindi topic names (largest possible report link)",
+  "where": "/resources/class-test-analyser → Create student report links",
+  "how": "Upload, analyse, create links, open a Preview",
+  "expect": {
+   "ok": true,
+   "students": 3,
+   "topics": 40,
+   "linksOk": 3
+  },
+  "expected": "All 3 links are created and each one opens (links are ~13,000 characters; earlier builds rejected them as too long)."
+ },
+ {
+  "file": "20-error-score-above-max.csv",
+  "area": "Class analyser",
+  "type": "error",
+  "title": "Score above the maximum",
+  "where": "/resources/class-test-analyser",
+  "how": "Upload, analyse",
+  "expect": {
+   "ok": false,
+   "issue": "12 is above the maximum of 10"
+  },
+  "expected": "Error naming row 3, column 2. Nothing analysed."
+ },
+ {
+  "file": "21-error-non-numeric.csv",
+  "area": "Class analyser",
+  "type": "error",
+  "title": "Text where a number should be",
+  "where": "/resources/class-test-analyser",
+  "how": "Upload, analyse",
+  "expect": {
+   "ok": false,
+   "issue": "isn't a number"
+  },
+  "expected": "Errors for both cells with guidance."
+ },
+ {
+  "file": "22-error-duplicate-roll.csv",
+  "area": "Class analyser",
+  "type": "error",
+  "title": "Same roll number twice (different case)",
+  "where": "/resources/class-test-analyser",
+  "how": "Upload, analyse",
+  "expect": {
+   "ok": false,
+   "issue": "appears more than once"
+  },
+  "expected": "Error on row 3."
+ },
+ {
+  "file": "23-error-duplicate-topic.csv",
+  "area": "Class analyser",
+  "type": "error",
+  "title": "Same topic twice",
+  "where": "/resources/class-test-analyser",
+  "how": "Upload, analyse",
+  "expect": {
+   "ok": false,
+   "issue": "appears twice"
+  },
+  "expected": "Error on the header."
+ },
+ {
+  "file": "24-error-no-header-marks-only.csv",
+  "area": "Class analyser",
+  "type": "error",
+  "title": "Header row forgotten (first row is marks)",
+  "where": "/resources/class-test-analyser",
+  "how": "Upload, analyse",
+  "expect": {
+   "ok": false,
+   "issue": "looks like marks"
+  },
+  "expected": "Error asking for a header row (fixed in v0.6 — previously 45 and 60 became topic names)."
+ },
+ {
+  "file": "25-error-student-named-max.csv",
+  "area": "Class analyser",
+  "type": "error",
+  "title": "First student is called 'Max'",
+  "where": "/resources/class-test-analyser",
+  "how": "Upload, analyse",
+  "expect": {
+   "ok": false,
+   "issue": "was read as the maximum marks"
+  },
+  "expected": "Error explains row 2 was read as maximum marks and to rename it."
+ },
+ {
+  "file": "26-error-too-many-topics.csv",
+  "area": "Class analyser",
+  "type": "error",
+  "title": "41 topics (limit 40)",
+  "where": "/resources/class-test-analyser",
+  "how": "Upload, analyse",
+  "expect": {
+   "ok": false,
+   "issue": "at most 40 topics"
+  },
+  "expected": "Error."
+ },
+ {
+  "file": "27-error-too-many-students.csv",
+  "area": "Class analyser",
+  "type": "error",
+  "title": "501 students (limit 500)",
+  "where": "/resources/class-test-analyser",
+  "how": "Upload, analyse",
+  "expect": {
+   "ok": false,
+   "issue": "at most 500 students"
+  },
+  "expected": "Error."
+ },
+ {
+  "file": "28-error-empty-topic-name.csv",
+  "area": "Class analyser",
+  "type": "error",
+  "title": "Blank topic name between filled ones",
+  "where": "/resources/class-test-analyser",
+  "how": "Upload, analyse",
+  "expect": {
+   "ok": false,
+   "issue": "Topic name is empty"
+  },
+  "expected": "Error on header column 3."
+ },
+ {
+  "file": "29-error-bad-max-row.csv",
+  "area": "Class analyser",
+  "type": "error",
+  "title": "MAX row with 0 and text",
+  "where": "/resources/class-test-analyser",
+  "how": "Upload, analyse",
+  "expect": {
+   "ok": false,
+   "issue": "Maximum marks must be a plain number above 0"
+  },
+  "expected": "Two errors on row 2."
+ },
+ {
+  "file": "30-followup-1-first-test.csv",
+  "area": "Follow-up check",
+  "type": "happy",
+  "title": "Follow-up: first test",
+  "where": "/resources/class-test-analyser",
+  "how": "Analyse this first, then 'Compare with a follow-up test' and upload file 31",
+  "expect": {
+   "ok": true,
+   "students": 5,
+   "topics": 3
+  },
+  "expected": "See file 31."
+ },
+ {
+  "file": "31-followup-2-retest.csv",
+  "area": "Follow-up check",
+  "type": "edge",
+  "title": "Follow-up: retest with renamed/new topic, new and missing students, different capitals",
+  "where": "/resources/class-test-analyser",
+  "how": "Upload as the follow-up after file 30",
+  "expect": {
+   "ok": true,
+   "students": 5,
+   "topics": 3,
+   "compareWith": "30-followup-1-first-test.csv",
+   "matched": 4,
+   "onlyFirstTopics": [
+    "Statistics"
+   ],
+   "onlySecondTopics": [
+    "Probability"
+   ],
+   "closed": 3,
+   "slipped": 1
+  },
+  "expected": "4 students matched (R05 and R06 not compared); Statistics/Probability listed as not compared; 3 gaps closed (Algebra: R01, R04; Geometry: R03); 1 slipped (Geometry: R04)."
+ },
+ {
+  "file": "34-error-odd-number-formats.csv",
+  "area": "Class analyser",
+  "type": "error",
+  "title": "Hex, exponent and space-inside-number cells",
+  "where": "/resources/class-test-analyser",
+  "how": "Upload, analyse",
+  "expect": {
+   "ok": false,
+   "issue": "\"0x10\" isn't a number"
+  },
+  "expected": "Errors for 0x10, 1e3 and “1 5” — none is silently turned into 16, 1000 or 15. Plus “+5” and “7,5” are accepted."
+ },
+ {
+  "file": "35-error-percent-over-100.csv",
+  "area": "Class analyser",
+  "type": "error",
+  "title": "Percentage and fraction cells above full marks",
+  "where": "/resources/class-test-analyser",
+  "how": "Upload, analyse",
+  "expect": {
+   "ok": false,
+   "issue": "is more than 100%"
+  },
+  "expected": "“120%” and “25/20” are each reported as more than 100% (no misleading advice about MAX rows)."
+ },
+ {
+  "file": "41-tracker-test-1.csv",
+  "area": "Class tracker",
+  "type": "happy",
+  "title": "Tracker: test 1 of 3 for one class",
+  "where": "/tracker",
+  "how": "Create a class, then '+ Add a test' with each file in order (dates 1 Jul, 1 Aug, 1 Sep)",
+  "expect": {
+   "ok": true,
+   "students": 4,
+   "topics": 2
+  },
+  "expected": "Add the next file."
+ },
+ {
+  "file": "42-tracker-test-2.csv",
+  "area": "Class tracker",
+  "type": "happy",
+  "title": "Tracker: test 2 of 3 for one class",
+  "where": "/tracker",
+  "how": "Create a class, then '+ Add a test' with each file in order (dates 1 Jul, 1 Aug, 1 Sep)",
+  "expect": {
+   "ok": true,
+   "students": 4,
+   "topics": 2
+  },
+  "expected": "Add the next file."
+ },
+ {
+  "file": "43-tracker-test-3.csv",
+  "area": "Class tracker",
+  "type": "happy",
+  "title": "Tracker: test 3 of 3 for one class",
+  "where": "/tracker",
+  "how": "Create a class, then '+ Add a test' with each file in order (dates 1 Jul, 1 Aug, 1 Sep)",
+  "expect": {
+   "ok": true,
+   "students": 4,
+   "topics": 3,
+   "trackerSet": [
+    "41-tracker-test-1.csv",
+    "42-tracker-test-2.csv",
+    "43-tracker-test-3.csv"
+   ],
+   "persistent": [
+    [
+     "K01",
+     "Algebra",
+     3
+    ],
+    [
+     "K03",
+     "Geometry",
+     2
+    ]
+   ]
+  },
+  "expected": "After all three: K01 Algebra '3×' and K03 Geometry (2 tests — absent in test 2, which is skipped, not counted as recovery); Mensuration appears from test 3 only."
+ },
+ {
+  "file": "50-security-formula-injection.csv",
+  "area": "Exports (CSV)",
+  "type": "security",
+  "title": "Spreadsheet formula injection in roll numbers",
+  "where": "/resources/class-test-analyser",
+  "how": "Analyse, download reteach groups CSV and student links CSV, open them in Excel",
+  "expect": {
+   "ok": true,
+   "students": 4,
+   "topics": 1,
+   "csvEscaped": true
+  },
+  "expected": "Excel shows the text (prefixed with ') — no formula runs, no link is created."
+ },
+ {
+  "file": "51-security-html-in-names.csv",
+  "area": "Class analyser + reports",
+  "type": "security",
+  "title": "HTML / script in names",
+  "where": "/resources/class-test-analyser",
+  "how": "Analyse, open a student report link, print reports",
+  "expect": {
+   "ok": true,
+   "students": 2,
+   "topics": 1
+  },
+  "expected": "Shown as plain text everywhere; no alert box ever appears."
+ },
+ {
+  "file": "52-security-urls-in-names.csv",
+  "area": "Report links",
+  "type": "security",
+  "title": "Web address used as a roll number",
+  "where": "/resources/class-test-analyser",
+  "how": "Analyse, then Create student report links",
+  "expect": {
+   "ok": true,
+   "students": 2,
+   "topics": 1,
+   "linksOk": 1
+  },
+  "expected": "Links created for R2 only, with a notice that 1 student was left out (fixed in v0.6 — prevents phishing text on heramb.study)."
+ }
+]

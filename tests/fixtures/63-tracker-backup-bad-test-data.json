@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "classes": [
+    {
+      "id": "classfixture1",
+      "name": "Class 9 B (test kit)",
+      "subject": "Mathematics",
+      "createdAt": "2026-10-15T10:00:00.000Z",
+      "tests": [
+        {
+          "id": "test00001",
+          "name": "Unit test 1",
+          "date": "2026-07-01",
+          "raw": "Roll no,Algebra,Geometry\nMAX,10,10\nK01,3,8\nK02,4,9\nK03,9,3\nK04,6,6\n",
+          "savedAt": "2026-10-15T10:00:00.000Z"
+        },
+        {
+          "id": "test00002",
+          "name": "Unit test 2",
+          "date": "2026-08-01",
+          "raw": "Roll no,Algebra\nK01,twelve",
+          "savedAt": "2026-10-15T10:00:00.000Z"
+        },
+        {
+          "id": "test00003",
+          "name": "Unit test 3",
+          "date": "2026-09-01",
+          "raw": "Roll no,Algebra,Geometry,Mensuration\nMAX,10,10,10\nK01,2,7,6\nK02,7,8,3\nK03,9,2,8\nK04,8,7,4\n",
+          "savedAt": "2026-10-15T10:00:00.000Z"
+        }
+      ]
+    },
+    {
+      "id": "classfixture2",
+      "name": "Class 11 Chemistry (test kit)",
+      "subject": "Chemistry",
+      "createdAt": "2026-10-15T10:00:00.000Z",
+      "tests": [
+        {
+          "id": "testchem0001",
+          "name": "Unit test 2",
+          "date": "2026-08-01",
+          "raw": "Roll no,Mole concept,Atomic structure,Chemical bonding,Thermodynamics,Equilibrium,Redox\nMAX,20,20,20,16,16,8\nR01,14,14,5,6,3,5\nR02,16,20,12,10,8,6\nR03,11,15,8,6,6,5\nR04,14,18,11,12,6,5\nR05,11,12,10,11,7,6\nR06,17,16,10,12,5,6\nR07,8,8,2,5,1,4\nR08,20,19,15,11,8,7\nR09,12,16,13,10,8,7\nR10,19,18,13,10,7,6\nR11,7,8,5,4,2,5\nR12,19,18,13,12,AB,8\nR13,8,15,7,6,5,5\nR14,15,16,9,7,4,AB\nR15,8,14,7,8,1,3\nR16,14,13,8,8,5,5\nR17,10,15,5,8,2,6\nR18,19,20,13,10,10,8\nR19,16,13,7,8,4,5\nR20,16,18,9,7,5,AB\nR21,17,19,12,13,9,7\nR22,17,20,13,12,8,7\nR23,20,19,16,11,10,7\nR24,12,9,6,8,2,4\n",
+          "savedAt": "2026-10-15T10:00:00.000Z"
+        }
+      ]
+    }
+  ]
+}

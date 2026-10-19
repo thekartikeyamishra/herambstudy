@@ -91,3 +91,22 @@ describe("student history (local only)", () => {
     expect(saveReport(reports[1]!)).toBe("full");
   });
 });
+
+describe("regression: the largest valid report always opens", () => {
+  it("40 topic names of 80 Hindi characters, plus Hindi institute/test/student names", async () => {
+    const { MAX_FRAGMENT_CHARS } = await import("@/lib/tools/studentReport");
+    const r: StudentReport = {
+      v: 1,
+      i: "स".repeat(80),
+      t: "प".repeat(80),
+      d: "2026-10-01",
+      s: "र".repeat(80),
+      n: Array.from({ length: 40 }, (_, i) => `${"क".repeat(77)}${String(i).padStart(3, "0")}`),
+      p: Array.from({ length: 40 }, () => 100),
+      a: Array.from({ length: 40 }, () => 100),
+    };
+    const fragment = encodeReport(r);
+    expect(fragment.length).toBeLessThan(MAX_FRAGMENT_CHARS);
+    expect(decodeReport(fragment)).toEqual(r);
+  });
+});

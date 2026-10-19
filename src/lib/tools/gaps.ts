@@ -14,7 +14,16 @@ export type TopicAnalysis = {
 
 export type RowError = { index: number; message: string };
 
-const num = (v: string) => (v.trim() === "" ? NaN : Number(v.replace(",", ".")));
+/** Plain numbers with decimal commas and Unicode minus signs ("−2", "7,5"). */
+const num = (v: string) => {
+  const t = v.trim().replace(/^[\u2212\u2013]/, "-");
+  return t === "" ? NaN : Number(t.replace(",", "."));
+};
+/** "45%" in the scored box means 45% of the maximum. */
+const scoredFrom = (v: string, max: number) => {
+  const t = v.trim();
+  return t.endsWith("%") ? (num(t.slice(0, -1)) / 100) * max : num(t);
+};
 
 /** Validates rows and computes per-topic results. Blank rows are ignored. */
 export function analyseTopics(rows: TopicInput[]): { results: TopicAnalysis[]; errors: RowError[] } {
@@ -23,8 +32,8 @@ export function analyseTopics(rows: TopicInput[]): { results: TopicAnalysis[]; e
   rows.forEach((row, index) => {
     const blank = !row.topic.trim() && !row.scored.trim() && !row.max.trim();
     if (blank) return;
-    const scored = num(row.scored);
     const max = num(row.max);
+    const scored = Math.round(scoredFrom(row.scored, max) * 100) / 100;
     if (!row.topic.trim()) return errors.push({ index, message: "Add a topic name." });
     if (!Number.isFinite(max) || max <= 0) return errors.push({ index, message: "Maximum marks must be more than 0." });
     if (!Number.isFinite(scored)) return errors.push({ index, message: "Enter the marks scored (can be negative)." });
