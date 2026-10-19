@@ -1,9 +1,0 @@
-case,contactName,role,email,phone,institutionType,instituteName,city,country,studentCount,exams,testFrequency,startWindow,priceComfort,privacyAcknowledged,expected
-valid-coaching,Ravi Kumar,owner,ravi@example.com,+91 98765 43210,coaching,Sunrise Classes,Lucknow,IN,200_1000,jee_main;neet,weekly,next_3_months,25_50,true,valid
-valid-school-no-phone,Anita Rao,academic_head,anita@example.com,,school,Green Valley School,Kanpur,IN,over_1000,boards,monthly,exploring,,true,valid
-valid-college,Dr S Iyer,academic_head,hod@example.com,,college,City Engineering College,Pune,IN,200_1000,university,monthly,this_month,not_sure,true,valid
-no-institution-type,A,owner,a@example.com,,,X School,Lucknow,IN,under_50,neet,weekly,exploring,,true,invalid:institutionType
-no-exams,A,owner,a@example.com,,school,X School,Lucknow,IN,under_50,,weekly,exploring,,true,invalid:exams
-bad-phone,A,owner,a@example.com,call me,school,X School,Lucknow,IN,under_50,neet,weekly,exploring,,true,invalid:phone
-short-institute-name,A,owner,a@example.com,,school,X,Lucknow,IN,under_50,neet,weekly,exploring,,true,invalid:instituteName
-unknown-price,A,owner,a@example.com,,school,X School,Lucknow,IN,under_50,neet,weekly,exploring,free,true,invalid:priceComfort

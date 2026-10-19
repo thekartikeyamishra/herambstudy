@@ -1,6 +1,0 @@
-case,name,email,topic,message,privacyAcknowledged,expected
-valid,Asha,asha@example.com,general,I would like to know more about pilots.,true,valid
-privacy-request,Asha,asha@example.com,privacy_request,Please delete my invite request.,true,valid
-message-too-short,Asha,asha@example.com,general,Hi,true,invalid:message
-no-name,,asha@example.com,general,A long enough message here.,true,invalid:name
-unknown-topic,Asha,asha@example.com,spam,A long enough message here.,true,invalid:topic
