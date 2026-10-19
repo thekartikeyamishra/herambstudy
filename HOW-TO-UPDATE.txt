@@ -1,0 +1,29 @@
+HERAMB.STUDY — HOW TO UPDATE FROM A NEW RELEASE ZIP (Windows)
+==============================================================
+
+Your usual way works: extract the zip, cut the "heramb-study" folder, paste it on E:\
+and let Windows replace the files. Then do these 4 steps in PowerShell:
+
+  cd E:\heramb-study
+  npm install
+  npm run clean:stale          <- deletes files that newer releases removed
+  npm run check                <- type check + lint + tests + build (must end with "OK")
+
+  git add -A
+  git commit -m "Release vX.Y.Z"
+  git push
+
+Vercel then deploys the NEW commit automatically.
+
+IMPORTANT — Vercel "Redeploy"
+  "Redeploy" rebuilds the SAME old commit as the deployment you clicked it on.
+  Never press Redeploy on an old failed deployment. Either push (above), or in
+  Vercel > Deployments open the newest row (its commit message is your latest one)
+  and redeploy that one. The build log line "Cloning ... (Branch: main, Commit: xxxxxxx)"
+  must show your newest commit.
+
+Check what is live:  https://herambstudy.vercel.app/api/health
+  -> shows "version" and "commit" of the running site.
+
+Safety net: even if you forget "npm run clean:stale", Vercel's build now removes old
+leftover code files automatically before building, and prints which ones it removed.

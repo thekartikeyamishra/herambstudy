@@ -2,6 +2,40 @@
 
 Two supported options. **Vercel** is the simplest for Next.js; **Firebase App Hosting** keeps everything in one Google project. Both serve static pages from a CDN and run the two API routes on Node.
 
+## Updating the repository from a release zip (do this every time)
+
+Copying a zip over the repository adds and replaces files but **never deletes** files a newer release removed. Those leftovers still get type-checked on Vercel and can fail the build. The v0.7 deploy failure (`api/dev/reset/route.dev.ts … has no exported member 'devResetMemory'`) was exactly this.
+
+To replace the code cleanly in Windows PowerShell, run these from the repository folder:
+
+```powershell
+# 1. Start from a clean, committed state
+git status
+
+# 2. Remove every tracked file (your .git, .env.local and node_modules are untouched)
+git rm -r -q .
+
+# 3. Unpack the release and copy it in, including dot-files such as .gitignore and .env.example
+Expand-Archive -Path "$HOME\Downloads\Heramb-v0.7.1.zip" -DestinationPath "$env:TEMP\heramb-release" -Force
+robocopy "$env:TEMP\heramb-release\heramb-study" . /E /NFL /NDL /NJH /NJS
+
+# 4. Stage everything. Deleted leftovers show as "deleted"; review before committing
+git add -A
+git status
+
+# 5. Verify locally, then ship
+npm ci
+npm run check
+git commit -m "Release v0.7.1"
+git push
+```
+
+- **Paste-over updates are fine too** (extract, cut `heramb-study`, paste on `E:\` and replace): afterwards run `npm run clean:stale`, then `git add -A` and commit. See `HOW-TO-UPDATE.txt`.
+- **Before every build:** `scripts/check-release-files.mjs` runs first. On Vercel it removes leftover code files automatically and lists them; on your computer it stops and asks you to run `npm run clean:stale`.
+- **Never “Redeploy” an old failed deployment** — it rebuilds that old commit. Push a new commit, or redeploy the newest row. `/api/health` shows the live `version` and `commit`.
+- **Files you added on purpose:** run `npm run release:manifest` and commit `scripts/release-manifest.json`.
+- **Node version warning:** in Vercel → Project → Settings → General → Node.js Version, choose **22.x**. This matches `engines` in `package.json` and silences the "24.x will not apply" warning.
+
 ## Option A — Vercel (recommended for simplicity)
 
 1. Push the repository to GitHub (private).

@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.7.2 — 19 October 2026
+
+Focus: deployments that cannot be broken by leftover files, whatever way the release is copied in.
+
+### Fixed
+- Repeated Vercel failure (`api/dev/reset/route.dev.ts … devResetMemory`). Two causes: (1) pasting a release over the folder keeps files a newer release removed; (2) Vercel “Redeploy” on an old deployment rebuilds that old commit (18c045d) again. Verified: the current GitHub `main` builds cleanly, and an old tree with all ten leftovers pasted over now builds too.
+
+### Changed
+- Stale-file guard now **removes leftover code files automatically on Vercel/CI** (a throw-away copy) and lists them; locally it stops and points to the new `npm run clean:stale`, which deletes them so the next commit cleans GitHub as well.
+- `/api/health` reports `version` and the live Git `commit`, so you can confirm what is deployed.
+- `HOW-TO-UPDATE.txt` at the project root: the paste-over update steps and the Redeploy pitfall.
+
+## 0.7.1 — 19 October 2026
+
+Focus: make deployments from a release zip reliable.
+
+### Fixed
+- **Vercel build failed with `Module '"@/lib/server/backend"' has no exported member 'devResetMemory'`** in `src/app/api/dev/reset/route.dev.ts`. That file is not part of any shipped release; it was left in the repository from an older version, because copying a zip over a repository never deletes removed files. `next build` still type-checks every `.ts` file, so the leftover broke the build. Fix: delete it (`git rm -r src/app/api/dev/reset`, plus `src/lib/dev/` if present) — see the new guard below.
+
+### Added
+- **Stale-file guard** (`prebuild` → `scripts/check-release-files.mjs`): compares the repository's code files with `scripts/release-manifest.json` and stops the build — locally and on Vercel — with the exact `git rm` commands when a leftover file would be compiled. `npm run release:manifest` re-lists files you add on purpose; `ALLOW_UNLISTED_FILES=true` overrides in an emergency.
+- `docs/DEPLOYMENT.md` → “Updating the repository from a release zip”: a clean-replace procedure for PowerShell (`git rm -r .`, `robocopy`, `git add -A`) and the Vercel Node.js 22.x setting.
+
 ## 0.7.0 — 19 October 2026
 
 Focus: real users and usage to show **without accounts**, a loop that keeps institutes regular, and marks that arrive without retyping.

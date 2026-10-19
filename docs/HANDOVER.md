@@ -5,7 +5,7 @@ Heramb**.**study
 
 Everything needed to pick up development, deployment and go-to-market exactly where we left off, without losing context, breaking production or repeating past mistakes.
 
-Version**0.7.0**
+Version**0.7.1**
 
 Date**19 October 2026**
 
@@ -72,6 +72,8 @@ New routes:
 - **Pages:** `/founding`, `/institute`, `/admin`.
 - **APIs:** `/api/institutes` (with `/stats`, `/feedback`, `/digest`), `/api/events`, `/api/stats/public`, `/api/admin/session`, `/api/admin/institutes`, `/api/cron/digest`, `/api/import/sheet`, `/api/import/extract`.
 
+> **Updating from a zip:** always use the clean-replace steps in `docs/DEPLOYMENT.md` (“Updating the repository from a release zip”). `npm run build` refuses to build when files from older releases are left behind.
+
 ## 1. Start here: resume in 10 minutes
 
 On Windows, in PowerShell, inside your local clone of the GitHub repo:
@@ -113,7 +115,7 @@ npm run test:e2e         # 203 browser tests (optional locally, required before 
 | Stage | Launch website with free tools live; **Founding Institute Programme** (codes, dashboards, owner CRM) recruiting 20–50 founding coachings; no accounts or billing yet |
 | Live URL | `https://herambstudy.vercel.app/` (Vercel). Free test analyser: `/resources/class-test-analyser` |
 | Canonical domain | `heramb.study` (set by `NEXT_PUBLIC_SITE_URL`). Ownership and trademark still to be confirmed. |
-| Code version | 0.7.0, Node 22, about 125 TypeScript source files and 64 test files |
+| Code version | 0.7.1, Node 22, about 125 TypeScript source files and 64 test files |
 | Hosting options | Vercel (current) or Firebase App Hosting (`apphosting.yaml` ready) |
 | Data store | Cloud Firestore, accessed only through server routes (Admin SDK); clients are denied by the rules |
 | Primary metric now | Founding institutes meeting the 7 programme goals (see `docs/FOUNDING-PROGRAM.md`) — activation, teacher adoption, distribution, student engagement, repeat usage, 30-day retention, value |
@@ -818,6 +820,7 @@ Working rules:
 
 | Version | Highlights |
 | --- | --- |
+| 0.7.1 (19 Oct 2026) | Deploy fix: stale-file guard before every build (a leftover `api/dev/reset/route.dev.ts` from an older copy broke the Vercel build); clean-replace update procedure in DEPLOYMENT.md |
 | 0.7.0 (19 Oct 2026) | Founding Institute Programme: institute codes and founding seats, anonymous usage ledger, institute dashboard with 7 goals, owner dashboard (`/admin`) with WhatsApp nudges and CSV, weekly digest (Vercel Cron), public live counter, import from Excel / platform exports / Google Sheet / photo-PDF, student useful-tap and revision reminder |
 | 0.6.1 (18 Oct 2026) | Hydration fix for browser-extension attributes; pitch video prompt v2 (EN + HI); this handover (revision 2 adds the status board, integration blueprint and sprint plan); outreach packs for 10 institutes |
 | 0.6.0 (15 Oct) | Developer console and three production locks; `smoke:prod`; test kit (39 data files, 5 backups, 11 links); parser edge-case fixes (Hindi long links, MAX-row variants, odd number formats, >100%, unnamed rows, natural sort) |
