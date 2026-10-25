@@ -22,7 +22,7 @@ const PRICE_CAP = (() => {
 export const metadata = buildMetadata({
   title: "Founding Institute Programme",
   description:
-    `Join Heramb.study as one of the first ${CAP} founding institutes: free chapter-wise test analysis, student report links with your institute's name, and a founding discount on any future paid plan.`,
+    `Join as one of the first ${CAP} founding institutes: free chapter-wise test analysis, student report links with your name, and a founding discount.`,
   path: "/founding",
 });
 

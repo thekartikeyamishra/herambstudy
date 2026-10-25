@@ -1,6 +1,6 @@
 {
   "name": "heramb-study",
-  "version": "0.10.0",
+  "version": "0.10.1",
   "private": true,
   "description": "Heramb.study — invite-only launch website. Progress, made visible.",
   "engines": {
@@ -24,7 +24,8 @@
     "waitlist": "node scripts/waitlist-admin.mjs",
     "smoke:prod": "node scripts/smoke-prod.mjs",
     "release:manifest": "node scripts/check-release-files.mjs --write",
-    "clean:stale": "node scripts/check-release-files.mjs --fix"
+    "clean:stale": "node scripts/check-release-files.mjs --fix",
+    "indexnow": "node scripts/indexnow.mjs"
   },
   "dependencies": {
     "firebase-admin": "14.5.0",

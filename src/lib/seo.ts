@@ -34,9 +34,11 @@ export function buildMetadata({
       description,
       siteName: siteConfig.name,
       locale: siteConfig.locale,
+      // Page-level openGraph replaces the root one, so the share image must be repeated here.
+      images: [{ url: absoluteUrl("/opengraph-image"), width: 1200, height: 630, alt: `${siteConfig.name} — ${siteConfig.tagline}` }],
       ...(type === "article" ? { publishedTime, modifiedTime } : {}),
     },
-    twitter: { card: "summary_large_image", title, description },
+    twitter: { card: "summary_large_image", title, description, images: [absoluteUrl("/opengraph-image")] },
   };
 }
 

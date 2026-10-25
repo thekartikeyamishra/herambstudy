@@ -4,7 +4,7 @@ import { Callout, PageHeader } from "@/components/ui/Primitives";
 import { breadcrumbJsonLd, buildMetadata } from "@/lib/seo";
 
 export const metadata = buildMetadata({
-  title: "Our approach: assessment limits, AI review and privacy",
+  title: "Our approach: assessment limits, AI and privacy",
   description:
     "How Heramb.study approaches assessment limitations, AI-assisted question review, privacy, and reporting incorrect questions — including what we have not done yet.",
   path: "/trust",

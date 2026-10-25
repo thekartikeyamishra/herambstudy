@@ -12,7 +12,7 @@ import { breadcrumbJsonLd, buildMetadata } from "@/lib/seo";
 export const metadata = buildMetadata({
   title: "Plans and pricing",
   description:
-    "Heramb.study's free tools stay free forever. Paid plans add cloud history, parent reports, multi-teacher workspaces and principal dashboards. Your data is always exportable.",
+    "Free tools stay free. Paid plans add full-year batch history, cloud sync, parent reports and multi-teacher workspaces. Your data is always exportable.",
   path: "/pricing",
 });
 

@@ -6,7 +6,7 @@ import { breadcrumbJsonLd, buildMetadata } from "@/lib/seo";
 export const metadata = buildMetadata({
   title: "Free class progress tracker for teachers",
   description:
-    "Save every test for a class and see topic trends, students with gaps that keep repeating, and which gaps closed since the last test. Free, no sign-up — data stays on your device.",
+    "Save every test for a class and see topic trends, repeating gaps and what improved since the last test. Free, no sign-up, data stays on your device.",
   path: "/tracker",
 });
 

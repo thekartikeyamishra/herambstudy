@@ -8,7 +8,7 @@ import { breadcrumbJsonLd, buildMetadata } from "@/lib/seo";
 export const metadata = buildMetadata({
   title: "Free resources for teachers and students",
   description:
-    "Free tools and guides for coaching teachers and students: a readiness diagnostic, learning-gap analyser, progress report template, and guides to comparing tests and interpreting mistakes.",
+    "Free tools and guides for teachers and students: class test analyser, readiness diagnostic, learning-gap analysis and a progress report template.",
   path: "/resources",
 });
 

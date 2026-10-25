@@ -9,6 +9,7 @@
     "scripts/assert-no-devtools.mjs",
     "scripts/check-release-files.mjs",
     "scripts/generate-icons.mjs",
+    "scripts/indexnow.mjs",
     "scripts/smoke-prod.mjs",
     "scripts/waitlist-admin.mjs",
     "src/app/about/page.tsx",

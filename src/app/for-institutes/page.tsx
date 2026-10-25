@@ -6,9 +6,9 @@ import { PageHeader, SectionHeading } from "@/components/ui/Primitives";
 import { breadcrumbJsonLd, buildMetadata } from "@/lib/seo";
 
 export const metadata = buildMetadata({
-  title: "For coaching institutes: know what to reteach after every test",
+  title: "Coaching institutes: what to reteach next",
   description:
-    "See topic-level learning gaps across a batch, assign targeted practice and report verified progress — evaluated alongside your existing test series, without replacing your software.",
+    "See chapter-wise gaps across a batch after every test, send each student a report and prove progress — alongside your existing test series.",
   path: "/for-institutes",
 });
 

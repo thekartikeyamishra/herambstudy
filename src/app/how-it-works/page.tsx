@@ -8,7 +8,7 @@ import { workflowSteps } from "@/content/sampleData";
 import { breadcrumbJsonLd, buildMetadata } from "@/lib/seo";
 
 export const metadata = buildMetadata({
-  title: "How it works: assess, diagnose, practise, verify, improve",
+  title: "How it works: from test marks to progress",
   description:
     "How Heramb.study is designed to turn each assessment into topic-level gaps, targeted practice and verified progress — with the limitations of each step explained.",
   path: "/how-it-works",
@@ -46,7 +46,8 @@ export default function HowItWorksPage() {
         title="From a test result to a verified next step."
         lede="Heramb.study is designed around one repeating loop. Here's what happens at each step, a worked example using fictional data, and what each step can't do."
       />
-      <section className="section">
+      <section className="section" aria-labelledby="overview-title">
+        <h2 id="overview-title" className="sr-only">The five steps at a glance</h2>
         <div className="container"><WorkflowDiagram detailed /></div>
       </section>
 

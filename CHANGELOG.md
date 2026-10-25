@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.10.1 — 25 October 2026
+
+Focus: search engines (Google, Bing) can index the right site, and every page passes an SEO audit.
+
+### Fixed
+- **Share image (og:image) was missing on every page except the home page.** Page-level Open Graph metadata replaced the root image; `buildMetadata` now adds the 1200×630 share image (and Twitter image) to every page.
+- Page titles over ~60 characters and descriptions over 160 characters shortened (13 pages), so Google and Bing show them in full.
+- `/how-it-works` jumped from H1 to H3; added a section H2.
+- `robots.txt` no longer sends the non-standard `Host:` line.
+
+### Added
+- **Launch readiness: "Site address matches the live domain"** (critical). If `NEXT_PUBLIC_SITE_URL` (e.g. heramb.study) isn't the domain Vercel actually serves, canonical tags, the sitemap and share links point to the wrong site and nothing gets indexed — `/admin` now says so with the fix.
+- **IndexNow for Bing**: key file in `public/` and `npm run indexnow -- https://<live domain>`, which submits every sitemap URL to Bing (and Yandex, Seznam, Naver) after a deploy. No account or secret needed.
+- Audit results (25 indexable pages): one H1 each, canonical, title, description, JSON-LD, share image, alt text on every image, no heading skips, 0 broken internal links. Lighthouse mobile (local, throttled): Performance 88–93, Accessibility 100, Best practices 100.
+
 ## 0.10.0 — 24 October 2026
 
 Focus: turn shared batch results into a local network effect, and make go-live problems visible before a meeting.

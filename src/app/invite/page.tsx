@@ -6,7 +6,7 @@ import { buildMetadata } from "@/lib/seo";
 export const metadata = buildMetadata({
   title: "Request an invite",
   description:
-    "Request invite-only early access to Heramb.study for students, teachers, tutors and coaching institutes. Free, no commitment, and you can ask us to delete your request at any time.",
+    "Request invite-only early access to Heramb.study for students, teachers and coaching institutes. Free, no commitment, deletable on request.",
   path: "/invite",
 });
 

@@ -320,6 +320,14 @@ export function launchReadiness(backend: Backend, env: Record<string, string | u
   return [
     { key: "storage", ok: backend.kind === "firestore", label: "Firestore storage connected", fix: "Set FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY in Vercel → Production, then redeploy.", critical: true },
     { key: "site", ok: site.startsWith("https://") && !site.includes("localhost"), label: "Public site address (NEXT_PUBLIC_SITE_URL) set", fix: "Set NEXT_PUBLIC_SITE_URL to your https address.", critical: true },
+    {
+      key: "address_match",
+      // VERCEL_PROJECT_PRODUCTION_URL is the domain Vercel actually serves Production on.
+      ok: !env.VERCEL_PROJECT_PRODUCTION_URL || new URL(site).hostname === env.VERCEL_PROJECT_PRODUCTION_URL.replace(/^https?:\/\//, "").replace(/\/.*$/, ""),
+      label: "Site address matches the live domain",
+      fix: `NEXT_PUBLIC_SITE_URL (${site}) differs from the domain Vercel serves (${env.VERCEL_PROJECT_PRODUCTION_URL ?? "?"}). Canonical tags, sitemap and links would point to the wrong site, so search engines index nothing. Connect that domain in Vercel → Domains, or set NEXT_PUBLIC_SITE_URL to the live address, then redeploy.`,
+      critical: true,
+    },
     { key: "domain", ok: /heramb\.study$/.test(new URL(site).hostname), label: "Own domain (heramb.study) in use", fix: "Connect heramb.study in Vercel → Domains and set NEXT_PUBLIC_SITE_URL=https://heramb.study. A vercel.app address looks temporary to institutes.", critical: false },
     { key: "email", ok: mail.sending, label: "Email sending on (welcome + weekly summary)", fix: "Set RESEND_API_KEY and EMAIL_FROM (verified domain).", critical: false },
     { key: "tokens", ok: mail.tokens, label: "Signed email links (stop / unsubscribe)", fix: "Set EMAIL_TOKEN_SECRET (32+ random characters).", critical: false },

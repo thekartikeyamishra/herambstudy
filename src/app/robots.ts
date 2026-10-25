@@ -14,6 +14,5 @@ export default function robots(): MetadataRoute.Robots {
   return {
     rules: [{ userAgent: "*", allow: "/", disallow: nonIndexedPrefixes }],
     sitemap: absoluteUrl("/sitemap.xml"),
-    host: siteConfig.url,
   };
 }

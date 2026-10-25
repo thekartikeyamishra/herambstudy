@@ -17,7 +17,7 @@ export type ResourceMeta = {
 export const resources: ResourceMeta[] = [
   {
     slug: "class-test-analyser",
-    title: "Class test analyser: find what to reteach from one test",
+    title: "Class test analyser: what to reteach after a test",
     summary:
       "Paste a whole batch's topic-wise marks from Excel or Google Sheets and get a teaching plan, reteach groups, a gap map and printable student reports — in your browser.",
     kind: "Interactive tool",
@@ -82,7 +82,7 @@ export const resources: ResourceMeta[] = [
   },
   {
     slug: "interpreting-repeated-mistakes",
-    title: "A teacher's guide to interpreting repeated mistakes",
+    title: "Guide to interpreting repeated mistakes",
     summary:
       "Five mistake types, how to tell them apart from a student's working, and the different fix each one needs — with a tally tool.",
     kind: "Guide",
