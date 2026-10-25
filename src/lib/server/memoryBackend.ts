@@ -1,3 +1,4 @@
+import { chapterKey, cityKey, type BenchmarkDoc, type StoredSummary } from "@/lib/institute/summary";
 import type { DayRow, FeedbackRow } from "@/lib/institute/metrics";
 import { STUDENT_EVENTS } from "@/lib/institute/events";
 import type {
@@ -98,6 +99,7 @@ type MemoryInstitute = {
   days: Map<string, DayRow["c"]>;
   devices: Set<string>;
   feedback: FeedbackRow[];
+  summaries: Map<string, StoredSummary>;
 };
 
 export class MemoryInstituteStore implements InstituteStore {
@@ -117,11 +119,12 @@ export class MemoryInstituteStore implements InstituteStore {
       status: "active",
       notes: null,
       nextFollowUp: null,
+      proUntil: null,
       devices: { teacher: 0, student: 0 },
       activatedAt: null,
       lastActiveAt: null,
     };
-    this.institutes.set(code, { record, days: new Map(), devices: new Set(), feedback: [] });
+    this.institutes.set(code, { record, days: new Map(), devices: new Set(), feedback: [], summaries: new Map() });
     return { code, seat };
   }
 
@@ -164,6 +167,39 @@ export class MemoryInstituteStore implements InstituteStore {
     if (inst.feedback.length > 200) inst.feedback.shift();
   }
 
+  readonly bench = new Map<string, BenchmarkDoc>();
+
+  async addSummary(code: string, summary: StoredSummary) {
+    const inst = this.institutes.get(code);
+    if (!inst) return;
+    inst.summaries.set(summary.id, structuredClone(summary));
+    const city = cityKey(inst.record.city);
+    for (const t of summary.topics) {
+      if (t.avg === null) continue;
+      const k = `${city}|${chapterKey(t.n)}`;
+      const doc = this.bench.get(k) ?? {};
+      const prev = doc[code];
+      if (!prev || prev.date <= summary.date) doc[code] = { avg: t.avg, date: summary.date };
+      this.bench.set(k, doc);
+    }
+    if (inst.summaries.size > 300) inst.summaries.delete(inst.summaries.keys().next().value!);
+  }
+
+  async benchmarks(city: string, keys: string[]) {
+    const out = new Map<string, BenchmarkDoc>();
+    for (const k of keys) {
+      const doc = this.bench.get(`${cityKey(city)}|${k}`);
+      if (doc) out.set(k, structuredClone(doc));
+    }
+    return out;
+  }
+
+  async summaries(code: string, limit = 60): Promise<StoredSummary[]> {
+    const inst = this.institutes.get(code);
+    if (!inst) return [];
+    return [...inst.summaries.values()].sort((a, b) => b.date.localeCompare(a.date) || b.at.localeCompare(a.at)).slice(0, limit).map((x) => structuredClone(x));
+  }
+
   async list() {
     return [...this.institutes.values()].map((i) => structuredClone(i.record)).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   }
@@ -188,6 +224,7 @@ export class MemoryInstituteStore implements InstituteStore {
     // Release the seat only if it was the most recent one (e.g. a test sign-up), so
     // other institutes' seat numbers never change.
     if (inst.record.foundingSeat && inst.record.foundingSeat === this.foundingTaken) this.foundingTaken -= 1;
+    for (const doc of this.bench.values()) delete doc[code];
     return this.institutes.delete(code);
   }
 

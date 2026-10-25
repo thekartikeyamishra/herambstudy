@@ -1,6 +1,6 @@
 {
   "name": "heramb-study",
-  "version": "0.7.2",
+  "version": "0.10.0",
   "private": true,
   "description": "Heramb.study — invite-only launch website. Progress, made visible.",
   "engines": {
@@ -29,6 +29,7 @@
   "dependencies": {
     "firebase-admin": "14.5.0",
     "next": "15.5.27",
+    "qrcode-generator": "2.0.4",
     "react": "19.1.9",
     "react-dom": "19.1.9",
     "zod": "3.25.76"

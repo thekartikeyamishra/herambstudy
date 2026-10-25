@@ -40,6 +40,12 @@ service cloud.firestore {
 
     // Programme counters (founding seats taken, public totals). Exposed only through
     // /api/stats/public, and only once there is enough real activity.
+    // City benchmarks: latest chapter average per institute. Read only by the server, which
+    // shows an average only when enough other institutes contribute.
+    match /benchmarks/{doc} {
+      allow read, write: if false;
+    }
+
     match /meta/{doc} {
       allow read, write: if false;
     }

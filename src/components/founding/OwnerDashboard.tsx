@@ -7,18 +7,26 @@ import { Badge } from "@/components/ui/Primitives";
 import { requestJson } from "@/lib/client/postJson";
 import { HEALTH_LABEL, type InstituteMetrics, type MetricKey } from "@/lib/institute/metrics";
 import { nudgeMessage, whatsappLink, type NudgeKind } from "@/lib/institute/share";
+import { TEST_DAYS, nextFollowUpDate, testDayLabel, testWeekStatus, type WeekStatus } from "@/lib/institute/testDay";
 import { cn } from "@/lib/cn";
 
 type Row = {
   code: string; name: string; city: string; institutionType: string; seat: number | null; seatLabel: string | null; status: "active" | "paused" | "closed";
   createdAt: string; weeklyDigest: boolean; contactName: string; role: string; phone: string | null; email: string | null; source: string | null;
-  notes: string | null; nextFollowUp: string | null; activatedAt: string | null; lastActiveAt: string | null; metrics: InstituteMetrics;
+  notes: string | null; nextFollowUp: string | null; testDay: number | null; proUntil: string | null; activatedAt: string | null; lastActiveAt: string | null; metrics: InstituteMetrics;
 };
-type ListReply = { ok: true; cap: number; today: string; totals: { institutes: number; foundingTaken: number; analysesReal: number; linksShared: number; reportsOpened: number; studentActions: number }; institutes: Row[] };
+type ListReply = { ok: true; cap: number; today: string; totals: { institutes: number; foundingTaken: number; analysesReal: number; linksShared: number; reportsOpened: number; studentActions: number }; institutes: Row[]; readiness?: Array<{ key: string; ok: boolean; label: string; fix: string; critical: boolean }> };
 
 const METRIC_SHORT: Record<MetricKey, string> = { activation: "Activated", adoption: "Teacher returned", distribution: "Links shared", engagement: "Students engaged", repeat: "Repeat test", retention: "30-day retained", value: "Value reported" };
 const healthTone = { not_activated: "neutral", active: "good", at_risk: "warn", dormant: "gap" } as const;
-const FILTERS = ["all", "not_activated", "at_risk", "dormant", "follow_up"] as const;
+const FILTERS = ["all", "not_activated", "at_risk", "dormant", "follow_up", "missed_test"] as const;
+const WEEK_CHIP: Record<WeekStatus, { label: string; cls: string } | null> = {
+  tested: { label: "✓ Latest test analysed", cls: "bg-good-tint text-good" },
+  due_today: { label: "Test day today", cls: "bg-brand-tint text-brand" },
+  awaiting: { label: "Waiting for this test's marks", cls: "bg-paper-sunk text-ink-muted" },
+  missed: { label: "✗ Latest test not analysed", cls: "bg-warn-tint text-warn" },
+  unknown: null,
+};
 
 export function suggestNudge(r: Row): NudgeKind {
   const m = r.metrics;
@@ -87,18 +95,19 @@ export function OwnerDashboard() {
     return data.institutes.filter((r) => {
       if (filter === "all") return true;
       if (filter === "follow_up") return Boolean(r.nextFollowUp && r.nextFollowUp <= data.today);
+      if (filter === "missed_test") return testWeekStatus(r.testDay, r.metrics.lastRealTest, data.today) === "missed";
       return r.metrics.health === filter;
     });
   }, [data, filter]);
 
   function exportCsv() {
     if (!data) return;
-    const header = ["Seat", "Code", "Institute", "City", "Type", "Contact", "Role", "Phone", "Email", "Source", "Status", "Health", "Goals met", ...Object.values(METRIC_SHORT), "Tests analysed", "Links shared", "Reports opened", "Teacher devices", "Student devices", "Registered", "Activated", "Last active", "Next follow-up", "Notes"];
+    const header = ["Seat", "Code", "Institute", "City", "Type", "Contact", "Role", "Phone", "Email", "Source", "Test day", "Status", "Health", "Goals met", ...Object.values(METRIC_SHORT), "Tests analysed", "Links shared", "Reports opened", "Teacher devices", "Student devices", "Registered", "Activated", "Last active", "Next follow-up", "Pro until", "Notes"];
     const lines = data.institutes.map((r) => [
-      r.seat ?? "", r.code, r.name, r.city, r.institutionType, r.contactName, r.role, r.phone ?? "", r.email ?? "", r.source ?? "", r.status, HEALTH_LABEL[r.metrics.health], r.metrics.metCount,
+      r.seat ?? "", r.code, r.name, r.city, r.institutionType, r.contactName, r.role, r.phone ?? "", r.email ?? "", r.source ?? "", testDayLabel(r.testDay) ?? "", r.status, HEALTH_LABEL[r.metrics.health], r.metrics.metCount,
       ...r.metrics.metrics.map((m) => (m.met ? "Yes" : m.pending ? "Pending" : "No")),
       r.metrics.totals.analysis_real, r.metrics.totals.links_shared, r.metrics.totals.report_opened, r.metrics.teacherDevices, r.metrics.studentDevices,
-      r.createdAt.slice(0, 10), r.activatedAt?.slice(0, 10) ?? "", r.lastActiveAt?.slice(0, 10) ?? "", r.nextFollowUp ?? "", r.notes ?? "",
+      r.createdAt.slice(0, 10), r.activatedAt?.slice(0, 10) ?? "", r.lastActiveAt?.slice(0, 10) ?? "", r.nextFollowUp ?? "", r.proUntil ?? "", r.notes ?? "",
     ].map(csvCell).join(","));
     const blob = new Blob(["﻿" + [header.map(csvCell).join(","), ...lines].join("\n")], { type: "text/csv;charset=utf-8" });
     const a = document.createElement("a");
@@ -145,6 +154,8 @@ export function OwnerDashboard() {
         </div>
       </div>
 
+      {data.readiness ? <Readiness items={data.readiness} /> : null}
+
       <section className="grid gap-3 sm:grid-cols-4" aria-label="Programme totals">
         {[
           ["Founding seats", `${data.totals.foundingTaken} / ${data.cap}`],
@@ -172,7 +183,7 @@ export function OwnerDashboard() {
         {FILTERS.map((f) => (
           <button key={f} type="button" onClick={() => setFilter(f)} aria-pressed={filter === f}
             className={cn("min-h-11 rounded-full border px-4 text-sm", filter === f ? "border-brand bg-brand-tint/60 font-medium" : "border-line-strong")}>
-            {f === "all" ? "All" : f === "follow_up" ? "Follow-up due" : HEALTH_LABEL[f]}
+            {f === "all" ? "All" : f === "follow_up" ? "Follow-up due" : f === "missed_test" ? "Missed latest test" : HEALTH_LABEL[f]}
           </button>
         ))}
       </div>
@@ -189,6 +200,11 @@ function InstituteRow({ row: r, origin, today, onChanged }: { row: Row; origin: 
   const [notes, setNotes] = useState(r.notes ?? "");
   const [follow, setFollow] = useState(r.nextFollowUp ?? "");
   const [status, setStatus] = useState(r.status);
+  const [testDay, setTestDay] = useState(r.testDay === null ? "" : String(r.testDay));
+  const [proUntil, setProUntil] = useState(r.proUntil ?? "");
+  const week = testWeekStatus(r.testDay, r.metrics.lastRealTest, today);
+  const chip = WEEK_CHIP[week];
+  const lastWeek = r.metrics.weeks.at(-2);
   const [kind, setKind] = useState<NudgeKind>(suggestNudge(r));
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
@@ -196,7 +212,7 @@ function InstituteRow({ row: r, origin, today, onChanged }: { row: Row; origin: 
 
   async function save() {
     setSaving(true);
-    const res = await requestJson("/api/admin/institutes", { method: "PATCH", body: { code: r.code, notes: notes.trim() || null, nextFollowUp: follow || null, status } });
+    const res = await requestJson("/api/admin/institutes", { method: "PATCH", body: { code: r.code, notes: notes.trim() || null, nextFollowUp: follow || null, status, testDay: testDay === "" ? null : Number(testDay), proUntil: proUntil || null } });
     setSaving(false);
     setMsg(res.kind === "success" ? "Saved" : res.message);
     if (res.kind === "success") void onChanged();
@@ -236,7 +252,12 @@ function InstituteRow({ row: r, origin, today, onChanged }: { row: Row; origin: 
           </li>
         ))}
       </ul>
-      <p className="mt-3 text-sm text-ink-soft"><strong className="text-ink">Next:</strong> {r.metrics.nextStep}</p>
+      <p className="mt-3 flex flex-wrap items-center gap-2 text-sm text-ink-soft">
+        <span>Test day: <strong className="text-ink">{testDayLabel(r.testDay) ?? "not set"}</strong></span>
+        {r.proUntil && r.proUntil >= today ? <span className="rounded-full bg-brand-tint px-3 py-1 text-xs font-semibold text-brand">Pro until {r.proUntil}</span> : null}
+        {chip ? <span className={cn("rounded-full px-3 py-1 text-xs font-medium", chip.cls)} data-testid="week-status">{chip.label}</span> : null}
+      </p>
+      <p className="mt-2 text-sm text-ink-soft"><strong className="text-ink">Next:</strong> {r.metrics.nextStep}</p>
       <p className="tabular mt-1 text-xs text-ink-muted">
         {r.metrics.totals.analysis_real} tests · {r.metrics.totals.links_shared} links · {r.metrics.totals.report_opened} opened · {r.metrics.teacherDevices} teacher / {r.metrics.studentDevices} student devices · {r.weeklyDigest ? "weekly email on" : "no weekly email"}
       </p>
@@ -250,16 +271,17 @@ function InstituteRow({ row: r, origin, today, onChanged }: { row: Row; origin: 
             <option value="at_risk">Restart rhythm</option>
             <option value="dormant">Check in</option>
             <option value="ask_value">Ask for value</option>
+            <option value="weekly">Weekly summary</option>
             <option value="thanks">Thank you</option>
           </select>
         </div>
         {r.phone ? (
           <a className="inline-flex min-h-11 items-center rounded-full bg-good px-5 text-sm font-medium text-white hover:opacity-90" target="_blank" rel="noopener"
-            href={whatsappLink(nudgeMessage(kind, r, origin), r.phone)}>Open WhatsApp<span className="sr-only"> (new tab)</span></a>
+            href={whatsappLink(nudgeMessage(kind, r, origin, { analyses: lastWeek?.analyses ?? 0, studentActions: lastWeek?.studentActions ?? 0, streak: r.metrics.weeklyStreak, metCount: r.metrics.metCount, nextStep: r.metrics.nextStep }), r.phone)}>Open WhatsApp<span className="sr-only"> (new tab)</span></a>
         ) : <span className="text-sm text-ink-muted">No phone number</span>}
       </div>
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto_auto]">
+      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-[1fr_auto_auto_auto_auto]">
         <div>
           <label htmlFor={`notes-${r.code}`} className="field-label">Notes</label>
           <textarea id={`notes-${r.code}`} rows={2} maxLength={2000} className="field-input" value={notes} onChange={(e) => setNotes(e.target.value)} />
@@ -267,6 +289,23 @@ function InstituteRow({ row: r, origin, today, onChanged }: { row: Row; origin: 
         <div>
           <label htmlFor={`follow-${r.code}`} className={cn("field-label", due && "text-gap")}>Next follow-up{due ? " (due)" : ""}</label>
           <input id={`follow-${r.code}`} type="date" className="field-input" value={follow} onChange={(e) => setFollow(e.target.value)} />
+          {testDay !== "" ? (
+            <button type="button" className="mt-1 text-xs text-brand underline underline-offset-4" onClick={() => setFollow(nextFollowUpDate(Number(testDay), today))}>
+              Day after next test
+            </button>
+          ) : null}
+        </div>
+        <div>
+          <label htmlFor={`testday-${r.code}`} className="field-label">Test day</label>
+          <select id={`testday-${r.code}`} className="field-input" value={testDay} onChange={(e) => setTestDay(e.target.value)}>
+            <option value="">Not set</option>
+            {TEST_DAYS.map((d) => <option key={d.value} value={String(d.value)}>{d.label}</option>)}
+          </select>
+        </div>
+        <div>
+          <label htmlFor={`pro-${r.code}`} className="field-label">Pro until</label>
+          <input id={`pro-${r.code}`} type="date" className="field-input" value={proUntil} onChange={(e) => setProUntil(e.target.value)} aria-describedby={`pro-hint-${r.code}`} />
+          <p id={`pro-hint-${r.code}`} className="field-hint">Set after payment. Empty = free plan.</p>
         </div>
         <div>
           <label htmlFor={`status-${r.code}`} className="field-label">Status</label>
@@ -284,5 +323,29 @@ function InstituteRow({ row: r, origin, today, onChanged }: { row: Row; origin: 
         {msg ? <span role="status" className="text-sm text-ink-muted">{msg}</span> : null}
       </div>
     </li>
+  );
+}
+
+function Readiness({ items }: { items: NonNullable<ListReply["readiness"]> }) {
+  const missing = items.filter((i) => !i.ok);
+  const criticalMissing = missing.some((i) => i.critical);
+  return (
+    <details className={cn("rounded-xl border p-4", criticalMissing ? "border-gap/40 bg-gap-tint/40" : missing.length ? "border-warn/40 bg-warn-tint/30" : "border-good/30 bg-good-tint/30")} open={criticalMissing} data-testid="readiness">
+      <summary className="cursor-pointer font-semibold text-ink">
+        Launch readiness: {items.length - missing.length} of {items.length} ready{criticalMissing ? " — fix the red items before meeting institutes" : ""}
+      </summary>
+      <ul className="mt-3 space-y-2 text-sm">
+        {items.map((i) => (
+          <li key={i.key} className="flex gap-2">
+            <span aria-hidden="true" className={i.ok ? "text-good" : i.critical ? "text-gap" : "text-warn"}>{i.ok ? "✓" : "✗"}</span>
+            <span>
+              <span className="sr-only">{i.ok ? "Ready: " : "Not ready: "}</span>
+              <span className="text-ink">{i.label}</span>
+              {!i.ok ? <span className="block text-ink-muted">{i.fix}</span> : null}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </details>
   );
 }

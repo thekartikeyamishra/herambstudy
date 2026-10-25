@@ -3,8 +3,13 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { codeFromRandom, CODE_PATTERN, foundingCap, isValidCode, normaliseCode, seatLabel } from "@/lib/institute/code";
 import { dayKey, eventBatchSchema, sanitiseEvents, valueFeedbackSchema } from "@/lib/institute/events";
+import { isPro, limitHistory } from "@/lib/institute/plan";
 import { computeMetrics, type InstituteMetrics } from "@/lib/institute/metrics";
+import { benchmarkMinOthers, chapterKey, computeBenchmark, shareSummarySchema, summaryId, type CityBenchmark } from "@/lib/institute/summary";
+import { nextFollowUpDate } from "@/lib/institute/testDay";
 import { fieldErrors, instituteJoinSchema, PRIVACY_NOTICE_VERSION } from "@/lib/validation/schemas";
+import { getProvider } from "@/lib/ai/providers";
+import { siteConfig } from "@/config/site";
 import { isOwner, passwordMatches, sessionCookie, signSession, ownerPassword } from "./adminAuth";
 import { getBackend, instanceLimiter } from "./backend";
 import { actionUrl, deliver, emailConfig, runAfterResponse, signToken, verifyToken } from "./email";
@@ -38,6 +43,7 @@ const makeCode = () => {
 };
 
 const today = () => dayKey(new Date());
+const addDaysIso = (iso: string, n: number) => new Date(Date.parse(`${iso}T00:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10);
 
 /** Institute info that is safe to show to anyone holding the code (no contact details). */
 function publicInstitute(r: InstituteRecord, cap: number) {
@@ -68,9 +74,18 @@ async function metricsFor(store: InstituteStore, r: InstituteRecord): Promise<In
 
 /* ── POST /api/institutes — register a founding institute ─────────────── */
 
+/**
+ * Sign-ups per network per 10 minutes (RATE_LIMIT_JOIN_PER_IP, default 10). High enough for a
+ * meetup where several heads join on one Wi-Fi; honeypot + timing checks stop scripts.
+ */
+function joinLimit(): number {
+  const v = Number(process.env.RATE_LIMIT_JOIN_PER_IP);
+  return Number.isInteger(v) && v > 0 && v <= 1000 ? v : 10;
+}
+
 export async function handleInstituteJoin(req: Request) {
   if (!isAllowedOrigin(req)) return fail(403, "forbidden_origin", "This request was blocked for security reasons.");
-  const limited = await burst(req, "join", 6);
+  const limited = await burst(req, "join", joinLimit() + 3);
   if (limited) return limited;
 
   const body = await readJsonBody(req);
@@ -87,7 +102,7 @@ export async function handleInstituteJoin(req: Request) {
     return fail(503, "service_unavailable", UNAVAILABLE, { retryAfterSec: 300 });
   }
   try {
-    const shared = await backend.limiter.hit(hashKey("join", "ip", clientIp(req)), 3, TEN_MIN);
+    const shared = await backend.limiter.hit(hashKey("join", "ip", clientIp(req)), joinLimit(), TEN_MIN);
     if (!shared.allowed) return fail(429, "rate_limited", "Too many registrations from this network. Please wait a few minutes.", { retryAfterSec: shared.retryAfterSec });
 
     const now = new Date();
@@ -103,11 +118,15 @@ export async function handleInstituteJoin(req: Request) {
         email: input.email,
         weeklyDigest: { granted: input.weeklyDigest, recordedAt: now, withdrawnAt: null },
         source: input.source ?? null,
+        testDay: input.testDay ?? null,
         createdAt: now,
         privacyNoticeVersion: PRIVACY_NOTICE_VERSION,
       },
       { cap, makeCode },
     );
+    // First follow-up: the day after their next test (when fresh marks exist), else in 7 days.
+    const firstFollowUp = input.testDay !== null && input.testDay !== undefined ? nextFollowUpDate(input.testDay, today()) : addDaysIso(today(), 7);
+    await backend.institutes.update(code, { nextFollowUp: firstFollowUp });
     const record = await backend.institutes.get(code);
     if (record) {
       const cfg = emailConfig();
@@ -181,8 +200,18 @@ export async function handleInstituteStats(req: Request) {
   if (backend.kind === "unavailable") return fail(503, "service_unavailable", "The dashboard isn't available right now. Please try again later.");
   const record = await backend.institutes.get(code);
   if (!record) return fail(404, "invalid_input", "We couldn't find an institute with that code. Check it and try again.");
-  const metrics = await metricsFor(backend.institutes, record);
-  return json({ ok: true, institute: publicInstitute(record, foundingCap()), metrics });
+  const [metrics, allSummaries] = await Promise.all([metricsFor(backend.institutes, record), backend.institutes.summaries(code, 200).catch(() => [])]);
+  const pro = isPro(record.proUntil, today());
+  const summaries = limitHistory(allSummaries, pro);
+  // City benchmark for the chapters this institute has shared (other institutes only, k ≥ 4).
+  let benchmark: CityBenchmark = {};
+  try {
+    const keys = [...new Set(summaries.flatMap((x) => x.topics.map((t) => chapterKey(t.n))))];
+    if (keys.length) benchmark = computeBenchmark(await backend.institutes.benchmarks(record.city, keys), code, today(), benchmarkMinOthers());
+  } catch (err) {
+    console.warn("[stats] benchmark unavailable:", err instanceof Error ? err.message : "unknown");
+  }
+  return json({ ok: true, institute: publicInstitute(record, foundingCap()), metrics, summaries, benchmark, plan: { pro, until: record.proUntil ?? null } });
 }
 
 /* ── POST /api/institutes/feedback — "What did this help with?" ─────────── */
@@ -206,6 +235,25 @@ export async function handleValueFeedback(req: Request) {
     note: parsed.data.note,
   });
   return json({ ok: true, message: "Thank you — this shapes what we build next." });
+}
+
+/* ── POST /api/institutes/summaries — a teacher shares a class summary with the head ── */
+
+export async function handleShareSummary(req: Request) {
+  if (!isAllowedOrigin(req)) return fail(403, "forbidden_origin", "Blocked.");
+  const limited = await burst(req, "summary", 40, HOUR);
+  if (limited) return limited;
+  const body = await readJsonBody(req);
+  if (!body.ok) return body.response;
+  const parsed = shareSummarySchema.safeParse(body.data);
+  if (!parsed.success) return fail(422, "invalid_input", "Please check the batch name, test name and date.", { fieldErrors: fieldErrors(parsed.error) });
+  const backend = getBackend();
+  if (backend.kind === "unavailable") return fail(503, "service_unavailable", "Sharing isn't available right now. Please try again later.");
+  const record = await backend.institutes.get(parsed.data.code);
+  if (!record) return fail(404, "invalid_input", "Institute not found. Reconnect with your institute code.");
+  const s = parsed.data.summary;
+  await backend.institutes.addSummary(parsed.data.code, { ...s, id: summaryId(s), at: new Date().toISOString() });
+  return json({ ok: true, message: "Shared with your institute dashboard." });
 }
 
 /* ── GET /api/stats/public — real, aggregate numbers for the homepage ───── */
@@ -262,6 +310,27 @@ function ownerBackend(req: Request): { ok: true; backend: Extract<Backend, { kin
   return { ok: true, backend };
 }
 
+export type ReadinessItem = { key: string; ok: boolean; label: string; fix: string; critical: boolean };
+
+/** Go-live checklist for the owner — booleans only, never configuration values. */
+export function launchReadiness(backend: Backend, env: Record<string, string | undefined> = process.env): ReadinessItem[] {
+  const mail = emailConfig();
+  const site = siteConfig.url;
+  const price = Number(env.FOUNDING_PRICE_CAP_INR);
+  return [
+    { key: "storage", ok: backend.kind === "firestore", label: "Firestore storage connected", fix: "Set FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY in Vercel → Production, then redeploy.", critical: true },
+    { key: "site", ok: site.startsWith("https://") && !site.includes("localhost"), label: "Public site address (NEXT_PUBLIC_SITE_URL) set", fix: "Set NEXT_PUBLIC_SITE_URL to your https address.", critical: true },
+    { key: "domain", ok: /heramb\.study$/.test(new URL(site).hostname), label: "Own domain (heramb.study) in use", fix: "Connect heramb.study in Vercel → Domains and set NEXT_PUBLIC_SITE_URL=https://heramb.study. A vercel.app address looks temporary to institutes.", critical: false },
+    { key: "email", ok: mail.sending, label: "Email sending on (welcome + weekly summary)", fix: "Set RESEND_API_KEY and EMAIL_FROM (verified domain).", critical: false },
+    { key: "tokens", ok: mail.tokens, label: "Signed email links (stop / unsubscribe)", fix: "Set EMAIL_TOKEN_SECRET (32+ random characters).", critical: false },
+    { key: "alerts", ok: Boolean(mail.ownerAlerts), label: "New-institute alerts to your inbox", fix: "Set OWNER_NOTIFICATION_EMAIL.", critical: false },
+    { key: "cron", ok: (env.CRON_SECRET ?? "").length >= 16, label: "Monday summary schedule (CRON_SECRET)", fix: "Set CRON_SECRET (16+ characters).", critical: false },
+    { key: "ai", ok: Boolean(getProvider()?.extract), label: "Photo / PDF marksheet reading", fix: "Optional: set AI_PROVIDER and AI_API_KEY (keep IMPORT_PHOTO_DAILY_LIMIT small).", critical: false },
+    { key: "price", ok: Number.isInteger(price) && price > 0, label: "Founding price lock decided", fix: "Optional: set FOUNDING_PRICE_CAP_INR once you've decided the number.", critical: false },
+    { key: "legal", ok: env.LEGAL_PAGES_REVIEWED === "true", label: "Privacy/terms placeholders filled", fix: "Replace every [placeholder] in /privacy and /terms (operator, region, retention), then set LEGAL_PAGES_REVIEWED=true.", critical: false },
+  ];
+}
+
 export async function handleAdminList(req: Request) {
   const o = ownerBackend(req);
   if (!o.ok) return o.response;
@@ -278,13 +347,15 @@ export async function handleAdminList(req: Request) {
       source: r.source,
       notes: r.notes,
       nextFollowUp: r.nextFollowUp,
+      testDay: r.testDay ?? null,
+      proUntil: r.proUntil ?? null,
       activatedAt: r.activatedAt?.toISOString() ?? null,
       lastActiveAt: r.lastActiveAt?.toISOString() ?? null,
       metrics: await metricsFor(store, r),
     })),
   );
   const totals = await store.totals();
-  return json({ ok: true, cap, totals, institutes: rows, today: today() });
+  return json({ ok: true, cap, totals, institutes: rows, today: today(), readiness: launchReadiness(o.backend) });
 }
 
 const patchSchema = z
@@ -297,6 +368,8 @@ const patchSchema = z
       .regex(/^\d{4}-\d{2}-\d{2}$/)
       .nullable()
       .optional(),
+    testDay: z.number().int().min(0).max(6).nullable().optional(),
+    proUntil: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
   })
   .strip();
 

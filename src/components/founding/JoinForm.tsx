@@ -5,6 +5,8 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Button, LinkButton } from "@/components/ui/Button";
 import { describedBy, Field, Honeypot, Spinner } from "@/components/forms/Field";
 import { setInstitute } from "@/lib/client/institute";
+import { TEST_DAYS } from "@/lib/institute/testDay";
+import { track } from "@/lib/client/analytics";
 import { requestJson } from "@/lib/client/postJson";
 import { teacherInviteMessage, whatsappLink } from "@/lib/institute/share";
 import { cn } from "@/lib/cn";
@@ -19,10 +21,11 @@ type Values = {
   phone: string;
   email: string;
   weeklyDigest: boolean;
+  testDay: string;
   privacyAcknowledged: boolean;
 };
 
-const initial: Values = { instituteName: "", city: "", institutionType: "coaching", contactName: "", role: "", phone: "", email: "", weeklyDigest: false, privacyAcknowledged: false };
+const initial: Values = { instituteName: "", city: "", institutionType: "coaching", contactName: "", role: "", phone: "", email: "", weeklyDigest: false, testDay: "", privacyAcknowledged: false };
 const ORDER = ["instituteName", "city", "institutionType", "contactName", "role", "phone", "email", "privacyAcknowledged"];
 
 type Joined = { code: string; seat: number | null; seatLabel: string | null; cap: number; name: string };
@@ -34,7 +37,7 @@ export function JoinForm() {
   const [message, setMessage] = useState("");
   const [joined, setJoined] = useState<Joined | null>(null);
   const [honeypot, setHoneypot] = useState("");
-  const [source, setSource] = useState<"meeting" | "self" | "referral">("self");
+  const [source, setSource] = useState<"meeting" | "self" | "referral" | "ads">("self");
   const [copied, setCopied] = useState(false);
   const [disconnected, setDisconnected] = useState(false);
   const [origin, setOrigin] = useState("");
@@ -44,8 +47,11 @@ export function JoinForm() {
   useEffect(() => {
     startedAt.current = Date.now();
     setOrigin(window.location.origin);
-    const s = new URLSearchParams(window.location.search).get("source");
-    if (s === "meeting" || s === "referral") setSource(s);
+    const q = new URLSearchParams(window.location.search);
+    const s = q.get("source");
+    // Paid clicks: ?source=ads, or Google's auto-tagging (gclid) / utm_medium=cpc.
+    if (s === "meeting" || s === "referral" || s === "ads") setSource(s);
+    else if (q.has("gclid") || q.get("utm_medium") === "cpc") setSource("ads");
   }, []);
   useEffect(() => {
     if (joined || status === "error") focusRef.current?.focus();
@@ -59,7 +65,7 @@ export function JoinForm() {
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (status === "submitting") return;
-    const payload = { ...v, source, website: honeypot, startedAt: startedAt.current || undefined };
+    const payload = { ...v, testDay: v.testDay === "" ? null : Number(v.testDay), source, website: honeypot, startedAt: startedAt.current || undefined };
     const parsed = instituteJoinSchema.safeParse(payload);
     if (!parsed.success) {
       const errs = toFieldErrors(parsed.error);
@@ -72,6 +78,7 @@ export function JoinForm() {
     const r = await requestJson<Joined & { ok: true }>("/api/institutes", { body: payload });
     if (r.kind === "success") {
       setJoined(r.data);
+      track("founding_institute_joined", { outcome: source });
       setInstitute({ code: r.data.code, name: r.data.name, seatLabel: r.data.seatLabel });
       setStatus("idle");
     } else {
@@ -162,6 +169,12 @@ export function JoinForm() {
         {text("phone", "Phone / WhatsApp", { type: "tel", auto: "tel", max: 20, optional: true, hint: "For setup help only. Phone or email is needed." })}
         {text("email", "Email", { type: "email", auto: "email", max: 254, optional: true, hint: "We'll email the institute code here." })}
       </div>
+      <Field id="join-testDay" label="Weekly test day" optional hint="We'll check in the day after your test — when the marks are fresh.">
+        <select id="join-testDay" className="field-input" value={v.testDay} onChange={(e) => set("testDay", e.target.value)} aria-describedby="join-testDay-hint">
+          <option value="">No fixed day</option>
+          {TEST_DAYS.map((d) => <option key={d.value} value={String(d.value)}>{d.label} ({d.hi})</option>)}
+        </select>
+      </Field>
       <label className={cn("flex items-start gap-3 text-[0.9375rem]", v.email.trim() ? "cursor-pointer text-ink-soft" : "text-ink-muted")}>
         <input type="checkbox" className="mt-1 h-4 w-4 shrink-0 accent-[rgb(var(--brand))]" checked={v.weeklyDigest} disabled={!v.email.trim()}
           onChange={(e) => set("weeklyDigest", e.target.checked)} />

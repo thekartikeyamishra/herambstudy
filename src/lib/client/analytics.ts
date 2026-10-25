@@ -18,7 +18,8 @@ export type AnalyticsEvent =
   | "resource_tool_completed"
   | "pwa_install_prompt_shown"
   | "pwa_install_completed"
-  | "app_store_coming_soon_clicked";
+  | "app_store_coming_soon_clicked"
+  | "founding_institute_joined";
 
 type SafeParams = Record<string, string | number | boolean>;
 

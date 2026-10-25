@@ -1,3 +1,4 @@
+import { chapterKey, cityKey, type BenchmarkDoc, type StoredSummary } from "@/lib/institute/summary";
 import { FieldPath, FieldValue, Timestamp, type Firestore } from "firebase-admin/firestore";
 import type { DayRow, FeedbackRow } from "@/lib/institute/metrics";
 import { STUDENT_EVENTS, type UsageEvent } from "@/lib/institute/events";
@@ -19,6 +20,7 @@ import type {
 } from "./types";
 
 export const COLLECTIONS = {
+  benchmarks: "benchmarks",
   invites: "inviteRequests",
   contacts: "contactMessages",
   pilots: "pilotApplications",
@@ -126,6 +128,8 @@ function fromDoc(data: Record<string, unknown>): InstituteRecord {
     createdAt: toDate(data.createdAt) ?? new Date(0),
     activatedAt: toDate(data.activatedAt),
     lastActiveAt: toDate(data.lastActiveAt),
+    proUntil: typeof data.proUntil === "string" && /^\d{4}-\d{2}-\d{2}$/.test(data.proUntil) ? data.proUntil : null,
+    testDay: Number.isInteger(data.testDay) && (data.testDay as number) >= 0 && (data.testDay as number) <= 6 ? (data.testDay as number) : null,
   };
 }
 
@@ -157,6 +161,7 @@ export class FirestoreInstituteStore implements InstituteStore {
           status: "active",
           notes: null,
           nextFollowUp: null,
+          proUntil: null,
           devices: { teacher: 0, student: 0 },
           activatedAt: null,
           lastActiveAt: null,
@@ -260,6 +265,41 @@ export class FirestoreInstituteStore implements InstituteStore {
     await this.ref(code).collection("feedback").add(row);
   }
 
+  /** benchmarks/{city|chapter} → { inst: { [code]: { avg, date } } } — latest average per institute. */
+  private benchRef(city: string, key: string) {
+    // Document ids can't contain "/"; chapterKey already strips punctuation.
+    return this.db.collection(COLLECTIONS.benchmarks).doc(`${cityKey(city)}|${key}`.slice(0, 300));
+  }
+
+  async addSummary(code: string, summary: StoredSummary) {
+    const ref = this.ref(code);
+    const snap = await ref.get();
+    const city = snap.exists ? String((snap.data() as { city?: string }).city ?? "") : "";
+    const batch = this.db.batch();
+    batch.set(ref.collection("summaries").doc(summary.id), summary);
+    for (const t of summary.topics) {
+      if (t.avg === null) continue;
+      batch.set(this.benchRef(city, chapterKey(t.n)), { inst: { [code]: { avg: t.avg, date: summary.date } }, updatedAt: new Date() }, { merge: true });
+    }
+    await batch.commit();
+  }
+
+  async benchmarks(city: string, keys: string[]) {
+    const out = new Map<string, BenchmarkDoc>();
+    const unique = [...new Set(keys)].slice(0, 60);
+    if (!unique.length) return out;
+    const snaps = await this.db.getAll(...unique.map((k) => this.benchRef(city, k)));
+    snaps.forEach((d, i) => {
+      if (d.exists) out.set(unique[i]!, ((d.data() as { inst?: BenchmarkDoc }).inst ?? {}) as BenchmarkDoc);
+    });
+    return out;
+  }
+
+  async summaries(code: string, limit = 60): Promise<StoredSummary[]> {
+    const snap = await this.ref(code).collection("summaries").orderBy("date", "desc").limit(limit).get();
+    return snap.docs.map((d) => d.data() as StoredSummary);
+  }
+
   async list() {
     const snap = await this.db.collection(COLLECTIONS.institutes).orderBy("createdAt", "desc").limit(500).get();
     return snap.docs.map((d) => fromDoc(d.data() as Record<string, unknown>));
@@ -293,6 +333,15 @@ export class FirestoreInstituteStore implements InstituteStore {
     const snap = await ref.get();
     if (!snap.exists) return false;
     const seat = (snap.data() as { foundingSeat?: number | null }).foundingSeat ?? null;
+    // Remove this institute from every city benchmark it contributed to.
+    const city = String((snap.data() as { city?: string }).city ?? "");
+    const shared = await ref.collection("summaries").get();
+    const keys = new Set(shared.docs.flatMap((d) => ((d.data() as StoredSummary).topics ?? []).map((t) => chapterKey(t.n))));
+    if (keys.size) {
+      const wb = this.db.batch();
+      for (const k of keys) wb.set(this.benchRef(city, k), { inst: { [code]: FieldValue.delete() } }, { merge: true });
+      await wb.commit();
+    }
     const metaRef = this.db.collection(COLLECTIONS.meta).doc("founding");
     await this.db.runTransaction(async (tx) => {
       const meta = await tx.get(metaRef);

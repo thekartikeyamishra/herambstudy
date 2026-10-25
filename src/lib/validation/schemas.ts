@@ -274,7 +274,7 @@ export const emailActionSchema = z
 
 /* ── Founding institute registration ─────────────────────────────────────── */
 
-export const JOIN_SOURCES = ["meeting", "self", "referral"] as const;
+export const JOIN_SOURCES = ["meeting", "self", "referral", "ads"] as const;
 export type JoinSource = (typeof JOIN_SOURCES)[number];
 
 export const instituteJoinSchema = z
@@ -292,6 +292,8 @@ export const instituteJoinSchema = z
       .transform((v) => (typeof v === "string" && v.length ? normalizeEmail(v) : null)),
     weeklyDigest: z.boolean().default(false),
     source: z.enum(JOIN_SOURCES).optional().catch(undefined),
+    /** Weekly test day, 0 = Sunday … 6 = Saturday; null = no fixed day. */
+    testDay: z.number().int().min(0).max(6).nullable().optional().catch(null),
     privacyAcknowledged: z.literal(true, {
       errorMap: () => ({ message: "Please confirm you've read how we use these details." }),
     }),

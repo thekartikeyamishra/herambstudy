@@ -7,6 +7,7 @@ import { Spinner } from "@/components/forms/Field";
 import { ruleBasedSummary, toSummaryInput, type Summary } from "@/lib/ai/summary";
 import type { ClassAnalysis } from "@/lib/tools/classAnalysis";
 import { track } from "@/lib/client/analytics";
+import { hindiParentNote } from "@/lib/i18n/report";
 
 /**
  * One-click teaching summary + parent note. Sends only topic names and class
@@ -16,11 +17,18 @@ import { track } from "@/lib/client/analytics";
 export function TeachingSummary({ analysis }: { analysis: ClassAnalysis }) {
   const [state, setState] = useState<"idle" | "loading" | "done">("idle");
   const [summary, setSummary] = useState<Summary | null>(null);
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState<"" | "en" | "hi">("");
+  const input = toSummaryInput(analysis);
+  const hindiNote = hindiParentNote({
+    strong: input.topics.filter((t) => t.action === "maintain").sort((a, b) => b.average - a.average).slice(0, 2).map((t) => t.name),
+    focus: [
+      ...input.topics.filter((t) => t.action === "whole_class").sort((a, b) => a.average - b.average),
+      ...input.topics.filter((t) => t.action === "small_group").sort((a, b) => b.belowHalf - a.belowHalf),
+    ].slice(0, 2).map((t) => t.name),
+  });
 
   async function run() {
     setState("loading");
-    const input = toSummaryInput(analysis);
     let s: Summary;
     try {
       const res = await fetch("/api/ai/summary", {
@@ -38,14 +46,14 @@ export function TeachingSummary({ analysis }: { analysis: ClassAnalysis }) {
     track("resource_tool_completed", { tool: s.source === "ai" ? "teaching_summary_ai" : "teaching_summary_rules" });
   }
 
-  async function copyParentNote() {
+  async function copyParentNote(lang: "en" | "hi") {
     if (!summary) return;
     try {
-      await navigator.clipboard.writeText(summary.parentNote);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      await navigator.clipboard.writeText(lang === "hi" ? hindiNote : summary.parentNote);
+      setCopied(lang);
+      setTimeout(() => setCopied(""), 2000);
     } catch {
-      setCopied(false);
+      setCopied("");
     }
   }
 
@@ -74,7 +82,11 @@ export function TeachingSummary({ analysis }: { analysis: ClassAnalysis }) {
           <div className="rounded-xl bg-paper-sunk p-4">
             <p className="text-xs font-semibold uppercase tracking-wider text-ink-muted">Note for parents</p>
             <p className="mt-1 text-ink">{summary.parentNote}</p>
-            <Button variant="secondary" className="mt-3" onClick={copyParentNote}>{copied ? "Copied" : "Copy parent note"}</Button>
+            <p className="mt-3 text-ink" lang="hi">{hindiNote}</p>
+            <div className="mt-3 flex flex-wrap gap-3">
+              <Button variant="secondary" onClick={() => copyParentNote("en")}>{copied === "en" ? "Copied" : "Copy parent note"}</Button>
+              <Button variant="secondary" onClick={() => copyParentNote("hi")}>{copied === "hi" ? "कॉपी हो गया" : "हिंदी नोट कॉपी करें"}</Button>
+            </div>
           </div>
           {summary.caution ? <p className="text-sm text-ink-muted">{summary.caution}</p> : null}
           <p className="text-xs text-ink-muted">

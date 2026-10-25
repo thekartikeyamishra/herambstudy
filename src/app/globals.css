@@ -157,3 +157,11 @@
   body.print-reports .student-report { break-after: page; page-break-after: always; }
   body.print-reports .student-report:last-child { break-after: auto; page-break-after: auto; }
 }
+
+/* Printable student report slips (QR): hidden on screen, printed alone, 8 per A4 page. */
+.report-slips { display: none; }
+@media print {
+  body.print-slips > *:not(.report-slips) { display: none !important; }
+  body.print-slips .report-slips { display: grid; grid-template-columns: 1fr 1fr; gap: 0; color: #0E1528; font-family: var(--font-sans), sans-serif; }
+  body.print-slips .report-slip { display: flex; gap: 10px; align-items: center; height: 64mm; padding: 6mm; border: 1px dashed #9AA0AE; break-inside: avoid; page-break-inside: avoid; box-sizing: border-box; }
+}

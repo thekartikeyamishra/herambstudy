@@ -5,9 +5,19 @@ import { JsonLd } from "@/components/seo/JsonLd";
 import { Callout } from "@/components/ui/Primitives";
 import { foundingCap } from "@/lib/institute/code";
 
+import { breadcrumbJsonLd, buildMetadata } from "@/lib/seo";
+
 /** Read at build time from FOUNDING_CAP so the page never promises a different number. */
 const CAP = foundingCap();
-import { breadcrumbJsonLd, buildMetadata } from "@/lib/seo";
+
+/**
+ * Optional founding price lock (FOUNDING_PRICE_CAP_INR, rupees per month per institute). Only
+ * shown when the owner has set it, so the page never states a number nobody decided.
+ */
+const PRICE_CAP = (() => {
+  const v = Number(process.env.FOUNDING_PRICE_CAP_INR);
+  return Number.isInteger(v) && v > 0 && v < 100000 ? v : null;
+})();
 
 export const metadata = buildMetadata({
   title: "Founding Institute Programme",
@@ -19,7 +29,9 @@ export const metadata = buildMetadata({
 const gets = [
   ["Today's free tools stay free", "The analyser, tracker, report links and dashboard — no trial that runs out."],
   ["Your founding seat number", `One of the first ${CAP} — shown on your dashboard. Later sign-ups are welcome but don't get a seat.`],
-  ["A founding discount", "On any future paid plan, in writing before it launches. Nothing is ever charged automatically."],
+  PRICE_CAP
+    ? ["A founding price lock", `If you ever choose a paid plan, it will never cost more than ₹${PRICE_CAP.toLocaleString("en-IN")} a month for your institute. Nothing is ever charged automatically.`]
+    : ["A founding discount", "On any future paid plan, in writing before it launches. You can always stay on the free plan, and nothing is ever charged automatically."],
   ["A direct line to the founder", "Setup help on WhatsApp, and a say in what we build next."],
 ];
 
@@ -63,6 +75,7 @@ export default function FoundingPage() {
               Your institute code connects teachers and students without accounts. Heramb only receives anonymous
               counts — tests analysed, links shared, reports opened. Marks, roll numbers and names stay on each device.{" "}
               <Link href="/privacy" className="font-medium text-brand underline underline-offset-4">Privacy policy</Link>.
+              <span className="mt-2 block" lang="hi">छात्रों के अंक और नाम आपके फ़ोन से बाहर नहीं जाते — Heramb को सिर्फ़ गिनती मिलती है। कोई फ़ीस नहीं, कोई अनुबंध नहीं।</span>
             </Callout>
             <LiveProof className="mt-8" />
           </div>

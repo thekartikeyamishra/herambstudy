@@ -81,3 +81,20 @@ The conversion moment is natural and honest: *"Your 3 classes and 14 tests live 
 - Whether to offer the founding-partner 2-year price lock.
 - **Proposed commitments (not shown publicly yet):** renewal reminders 30 and 7 days before any charge, and 12 months of read-only access after cancelling. Both are strong trust builders; add them to `GUARANTEES` once you decide and billing can honour them.
 - Which AI provider/model to enable, and the monthly AI budget (sets `AI_GLOBAL_DAILY_LIMIT`).
+
+## Revenue lines (v0.10) — free stays free, paid adds new value
+
+**Why free users don't cost money:** the analyser, paper map, imports from Excel, report links (data inside the link), QR slips, tracker and Hindi all run in the user's browser. Server cost per free user is a few Firestore counter writes a week, a fraction of a rupee a month on Vercel and Firestore free tiers. The only metered costs are AI (photo import, AI summaries), which are capped per network per day and globally (`AI_GLOBAL_DAILY_LIMIT`). Free users are near-zero-cost acquisition, not a loss.
+
+| # | Revenue line | Who pays | Status | Gross margin |
+|---|---|---|---|---|
+| 1 | **Institute plan**: full-year batch history and CSV export (live), with cloud tracker, multi-teacher workspace and branded reports to follow | Coaching heads | History and export **live**, gated by "Pro until" on `/admin`; others planned | ~95%: data is small aggregates |
+| 2 | **Prayagraj Open Test** (monthly common paper, city rank by chapter) | ₹20–30 per student, collected by the institute or paid by parents | Process only; runs on the existing analyser and benchmark | ~85–90%: paper by Circle teachers, printing by the institute |
+| 3 | **Photo/OMR reading credits** beyond the free daily cap | Institutes without OMR software | Import is live; credits need billing | 70–80%: AI vision is roughly ₹1–3 per page |
+| 4 | **WhatsApp auto-delivery** of reports to parents (Business API) | Institutes with 200+ students | Planned | 40–60%: Meta charges per conversation, pass through plus margin |
+| 5 | **Teacher workshops and certification** (Teachers' Circle "Reteach Lab", most-improved-chapter certificates) | Institutes per teacher, or sponsors | Process only | ~90% |
+| 6 | **Branded parent reports and PTM kit** (letterhead slips, term report book) | Institutes before parent meetings | Branded reports planned | ~90% |
+
+**Collecting money today without building billing:** send a Razorpay payment link, then set **Pro until** on `/admin`. Pro features turn on for that institute's code at once and switch off by themselves after the date. No card data ever touches Heramb.
+
+**Pricing (owner to decide; keep it under the founding price lock):** a starting point to validate is ₹999–1,999 a month for the Institute plan, or yearly at 10× monthly. Set `FOUNDING_PRICE_CAP_INR` to the founding promise before asking anyone to pay.

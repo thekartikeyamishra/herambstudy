@@ -33,6 +33,7 @@ export default defineConfig({
       NEXT_TELEMETRY_DISABLED: "1",
       RATE_LIMIT_INVITE_PER_IP: "100",
       RATE_LIMIT_PILOT_PER_IP: "100",
+      RATE_LIMIT_JOIN_PER_IP: "100",
       // Signed links work without an email provider; no email is actually sent in tests.
       EMAIL_TOKEN_SECRET: "e2e-email-token-secret-0123456789abcdef",
     },

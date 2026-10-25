@@ -25,6 +25,7 @@ import { recordUsage } from "@/lib/client/usage";
 import { markDone, textHash } from "@/lib/client/onceStore";
 import { useWorkspace } from "./useWorkspace";
 
+const BACKUP_KEY = "heramb.tracker-backup-at.v1";
 const tone = { secure: "bg-good-tint text-good", developing: "bg-warn-tint text-warn", gap: "bg-gap-tint text-gap" } as const;
 
 export function Tracker() {
@@ -39,6 +40,17 @@ export function Tracker() {
   }, [status, workspace.classes]);
 
   const selected = workspace.classes.find((c) => c.id === selectedId) ?? null;
+
+  // Backup reminder: data lives in one browser, so nudge after tests are added.
+  const [lastBackup, setLastBackup] = useState<string | null>(null);
+  useEffect(() => {
+    try {
+      setLastBackup(localStorage.getItem(BACKUP_KEY));
+    } catch {
+      /* ignore */
+    }
+  }, []);
+  const unbacked = workspace.classes.reduce((n, c) => n + c.tests.filter((t) => !lastBackup || t.savedAt > lastBackup).length, 0);
 
   function apply(fn: Parameters<typeof update>[0], ok?: string) {
     const err = update(fn);
@@ -125,12 +137,25 @@ export function Tracker() {
         />
         <div className="space-y-2 border-t border-line pt-5">
           <h2 className="font-sans text-base font-semibold">Backup</h2>
+          {unbacked > 0 ? (
+            <p role="status" className="rounded-lg bg-warn-tint px-3 py-2 text-xs font-medium text-warn" data-testid="backup-reminder">
+              {unbacked} test{unbacked === 1 ? "" : "s"} saved since your last backup{lastBackup ? ` (${lastBackup.slice(0, 10)})` : ""}. Export now so a phone change or cleared browser can't lose them.
+            </p>
+          ) : null}
           <p className="text-xs text-ink-muted">Your data lives only in this browser. Export a backup regularly, and to move to another device.</p>
           <div className="flex flex-wrap gap-2">
             <Button
               variant="secondary"
               disabled={!workspace.classes.length}
-              onClick={() => downloadText(`heramb-tracker-backup-${todayIso()}.json`, JSON.stringify(workspace, null, 2), "application/json")}
+              onClick={() => {
+                downloadText(`heramb-tracker-backup-${todayIso()}.json`, JSON.stringify(workspace, null, 2), "application/json");
+                try {
+                  localStorage.setItem(BACKUP_KEY, new Date().toISOString());
+                } catch {
+                  /* ignore */
+                }
+                setLastBackup(new Date().toISOString());
+              }}
             >
               Export
             </Button>

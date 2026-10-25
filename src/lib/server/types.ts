@@ -1,3 +1,4 @@
+import type { BenchmarkDoc, StoredSummary } from "@/lib/institute/summary";
 import type { DayRow, DeviceCounts, FeedbackRow } from "@/lib/institute/metrics";
 import type { UsageEvent } from "@/lib/institute/events";
 import type {
@@ -125,6 +126,10 @@ export interface InstituteRecord {
   /** Owner-only CRM fields. */
   notes: string | null;
   nextFollowUp: string | null;
+  /** Weekly test day, 0 = Sunday … 6 = Saturday (null = no fixed day). Drives follow-up dates. */
+  testDay: number | null;
+  /** Paid plan: Pro features are on until this date (inclusive, YYYY-MM-DD); null = free plan. Set by the owner after payment. */
+  proUntil: string | null;
   devices: DeviceCounts;
   createdAt: Date;
   activatedAt: Date | null;
@@ -132,7 +137,7 @@ export interface InstituteRecord {
   privacyNoticeVersion: string;
 }
 
-export type NewInstitute = Omit<InstituteRecord, "code" | "foundingSeat" | "devices" | "activatedAt" | "lastActiveAt" | "status" | "notes" | "nextFollowUp">;
+export type NewInstitute = Omit<InstituteRecord, "code" | "foundingSeat" | "devices" | "activatedAt" | "lastActiveAt" | "status" | "notes" | "nextFollowUp" | "proUntil">;
 
 export type InstituteUsage = { days: DayRow[]; devices: DeviceCounts; feedback: FeedbackRow[] };
 
@@ -145,7 +150,7 @@ export type PublicTotals = {
   studentActions: number;
 };
 
-export type InstitutePatch = Partial<Pick<InstituteRecord, "status" | "notes" | "nextFollowUp">>;
+export type InstitutePatch = Partial<Pick<InstituteRecord, "status" | "notes" | "nextFollowUp" | "testDay" | "proUntil">>;
 
 export interface InstituteStore {
   /** Creates an institute with a fresh unique code; assigns a founding seat while seats remain. */
@@ -155,6 +160,12 @@ export interface InstituteStore {
   recordUsage(input: { code: string | null; deviceKey: string; role: "teacher" | "student"; events: Array<{ type: UsageEvent; n: number }>; day: string; at: Date }): Promise<void>;
   usage(code: string, maxDays?: number): Promise<InstituteUsage>;
   addFeedback(code: string, row: FeedbackRow): Promise<void>;
+  /** Stores a teacher-shared class summary (aggregates only); same id replaces. */
+  addSummary(code: string, summary: StoredSummary): Promise<void>;
+  /** Latest shared class summaries, newest test first. */
+  summaries(code: string, limit?: number): Promise<StoredSummary[]>;
+  /** Benchmark docs (latest average per institute) for these chapter keys in one city. */
+  benchmarks(city: string, chapterKeys: string[]): Promise<Map<string, BenchmarkDoc>>;
   list(): Promise<InstituteRecord[]>;
   update(code: string, patch: InstitutePatch): Promise<boolean>;
   setDigest(code: string, granted: boolean, at: Date): Promise<boolean>;

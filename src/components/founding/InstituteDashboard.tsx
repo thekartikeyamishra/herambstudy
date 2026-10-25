@@ -11,10 +11,12 @@ import { normaliseCode } from "@/lib/institute/code";
 import { HELPED_WITH, MINUTES_SAVED } from "@/lib/institute/events";
 import { HEALTH_LABEL, type InstituteMetrics } from "@/lib/institute/metrics";
 import { teacherInviteMessage, whatsappLink } from "@/lib/institute/share";
+import { batchViews, chapterKey, type CityBenchmark, type StoredSummary } from "@/lib/institute/summary";
+import { batchHistoryCsv, FREE_TESTS_PER_BATCH } from "@/lib/institute/plan";
 import { cn } from "@/lib/cn";
 
 type Institute = { code: string; name: string; city: string; seat: number | null; seatLabel: string | null; cap: number; createdAt: string; weeklyDigest: boolean };
-type Reply = { ok: true; institute: Institute; metrics: InstituteMetrics };
+type Reply = { ok: true; institute: Institute; metrics: InstituteMetrics; summaries?: StoredSummary[]; benchmark?: CityBenchmark; plan?: { pro: boolean; until: string | null } };
 
 const healthTone = { not_activated: "neutral", active: "good", at_risk: "warn", dormant: "gap" } as const;
 
@@ -110,6 +112,10 @@ export function InstituteDashboard() {
         </div>
       </section>
 
+      <BatchResults summaries={data.summaries ?? []} benchmark={data.benchmark ?? {}} city={inst.city} />
+
+      <BatchHistory summaries={data.summaries ?? []} plan={data.plan ?? { pro: false, until: null }} name={inst.name} />
+
       <section aria-labelledby="goals-title">
         <h3 id="goals-title" className="font-sans text-lg font-semibold">Programme goals</h3>
         <ul className="mt-4 grid gap-3 sm:grid-cols-2" data-testid="metrics">
@@ -156,7 +162,7 @@ export function InstituteDashboard() {
             </div>
           ))}
         </dl>
-        <p className="mt-3 text-xs text-ink-muted">Teachers and students are counted by device. Counts only — no marks, names or roll numbers are ever sent.</p>
+        <p className="mt-3 text-xs text-ink-muted">Teachers and students are counted by device. Counts only — no names or roll numbers are ever sent. Batch results appear only when a teacher shares a class summary.</p>
       </section>
 
       <ValueFeedback code={inst.code} onSaved={() => void load(inst.code)} />
@@ -252,6 +258,107 @@ export function UsageSettings() {
           programme. Never marks, names or roll numbers. Turning this off changes nothing else.
         </span>
       </label>
+    </section>
+  );
+}
+
+const fmtDate = (iso: string) => new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-IN", { day: "numeric", month: "short", timeZone: "UTC" });
+const change = (n: number | null) => (n === null || n === 0 ? null : <span className={cn("tabular text-xs font-semibold", n > 0 ? "text-good" : "text-gap")}>{n > 0 ? `▲ ${n}` : `▼ ${-n}`}</span>);
+
+/** What the head actually cares about: each batch's latest test, weakest chapters and direction. */
+function BatchResults({ summaries, benchmark, city }: { summaries: StoredSummary[]; benchmark: CityBenchmark; city: string }) {
+  const views = batchViews(summaries);
+  const hasBench = Object.keys(benchmark).length > 0;
+  return (
+    <section className="card p-5 sm:p-6" aria-labelledby="batches-title" data-testid="batch-results">
+      <h3 id="batches-title" className="font-sans text-lg font-semibold">Batch results</h3>
+      {views.length === 0 ? (
+        <p className="mt-2 text-sm text-ink-soft">
+          No batch results yet. After analysing a test, a teacher taps <strong>Share with the head</strong> — then each batch's chapter
+          averages and weakest chapters appear here. Only class-level numbers, never student names.
+        </p>
+      ) : (
+        <ul className="mt-4 grid gap-4 md:grid-cols-2">
+          {views.map((v) => (
+            <li key={v.batch} className="rounded-xl border border-line p-4">
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <p className="font-semibold text-ink">{v.batch}</p>
+                <p className="text-xs text-ink-muted">{v.latest.test} · {fmtDate(v.latest.date)} · {v.tests} test{v.tests === 1 ? "" : "s"} shared</p>
+              </div>
+              <p className="mt-2 text-sm text-ink-soft">
+                Class average <strong className="tabular text-ink">{v.latest.average === null ? "—" : `${v.latest.average}%`}</strong> {change(v.averageChange)}
+                <span className="text-ink-muted"> · {v.latest.students} students</span>
+              </p>
+              {v.weakest.length ? (
+                <ol className="mt-3 space-y-1.5 text-sm">
+                  {v.weakest.map((t) => (
+                    <li key={t.n} className="flex items-center justify-between gap-2">
+                      <span className="text-ink">{t.n}</span>
+                      <span className="flex items-center gap-2">
+                        <span className={cn("tabular font-semibold", t.avg < 50 ? "text-gap" : t.avg < 75 ? "text-warn" : "text-good")}>{t.avg}%</span>
+                        {change(t.change)}
+                        <span className="tabular text-xs text-ink-muted">{t.below}/{t.att} below 50%</span>
+                        {benchmark[chapterKey(t.n)] ? (
+                          <span className="tabular rounded-full bg-paper-sunk px-2 py-0.5 text-xs text-ink-soft" title={`Average of ${benchmark[chapterKey(t.n)]!.institutes} other institutes in ${city}`}>
+                            {city}: {benchmark[chapterKey(t.n)]!.avg}%
+                          </span>
+                        ) : null}
+                      </span>
+                    </li>
+                  ))}
+                </ol>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      )}
+      {views.length ? (
+        <p className="mt-4 text-xs text-ink-muted" data-testid="benchmark-note">
+          {hasBench
+            ? `“${city}: X%” is the average of other founding institutes in ${city} for the same chapter (latest test, last 4 months). No institute is named.`
+            : `A ${city} comparison appears per chapter once at least 5 founding institutes in ${city} share results for it — no institute is ever named.`}
+        </p>
+      ) : null}
+    </section>
+  );
+}
+
+/** Pro: every shared test per batch, plus a CSV export. Free: the latest few, and an honest note. */
+function BatchHistory({ summaries, plan, name }: { summaries: StoredSummary[]; plan: { pro: boolean; until: string | null }; name: string }) {
+  if (!summaries.length) return null;
+  function exportCsv() {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([batchHistoryCsv(summaries)], { type: "text/csv;charset=utf-8" }));
+    a.download = `${name.replace(/[^\w]+/g, "-").toLowerCase()}-batch-history.csv`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+  const rows = [...summaries].sort((a, b) => a.batch.localeCompare(b.batch) || b.date.localeCompare(a.date));
+  return (
+    <section className="card p-5 sm:p-6" aria-labelledby="history-title" data-testid="batch-history">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h3 id="history-title" className="font-sans text-lg font-semibold">Batch history</h3>
+        {plan.pro ? <span className="rounded-full bg-brand-tint px-3 py-1 text-xs font-semibold text-brand">Pro{plan.until ? ` · until ${plan.until}` : ""}</span> : null}
+      </div>
+      <div className="mt-3 overflow-x-auto">
+        <table className="w-full text-left text-sm">
+          <thead><tr className="text-xs text-ink-muted"><th className="py-1 pr-3 font-medium">Batch</th><th className="py-1 pr-3 font-medium">Test</th><th className="py-1 pr-3 font-medium">Date</th><th className="py-1 font-medium">Class average</th></tr></thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.id} className="border-t border-line"><td className="py-1.5 pr-3">{r.batch}</td><td className="py-1.5 pr-3">{r.test}</td><td className="tabular py-1.5 pr-3">{r.date}</td><td className="tabular py-1.5">{r.average === null ? "—" : `${r.average}%`}</td></tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {plan.pro ? (
+        <Button variant="secondary" className="mt-4" onClick={exportCsv}>Export batch history (CSV)</Button>
+      ) : (
+        <p className="mt-3 text-sm text-ink-soft">
+          The free plan shows each batch's latest {FREE_TESTS_PER_BATCH} shared tests. The <strong className="text-ink">Institute plan</strong> keeps the whole
+          year for every batch, with a CSV export for reviews and parent meetings.{" "}
+          <Link href="/pricing" className="font-medium text-brand underline underline-offset-4">See plans</Link>
+        </p>
+      )}
     </section>
   );
 }

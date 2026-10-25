@@ -25,16 +25,14 @@ import { TeachingSummary } from "./TeachingSummary";
 import { SaveToTracker } from "@/components/tracker/SaveToTracker";
 import { ToolShell, downloadText, useToolTracking } from "./ToolShell";
 import { ImportPanel, tidyTable, type ImportResult } from "./ImportPanel";
+import { PaperMapPanel, looksQuestionWise } from "./PaperMapPanel";
 import { InstituteBar } from "@/components/founding/InstituteBar";
+import { ShareSummary } from "@/components/founding/ShareSummary";
 import { recordUsage } from "@/lib/client/usage";
+import { ANALYSER_TEXT, TEACHER_LANG_KEY, type TeacherLang } from "@/lib/i18n/analyser";
 import { markDone, textHash } from "@/lib/client/onceStore";
 
-const actionInfo = {
-  whole_class: { label: "Reteach to whole class", tone: "gap" as const },
-  small_group: { label: "Small-group recap", tone: "warn" as const },
-  maintain: { label: "Maintain", tone: "good" as const },
-  no_data: { label: "No data", tone: "neutral" as const },
-};
+const actionTone = { whole_class: "gap", small_group: "warn", maintain: "good", no_data: "neutral" } as const;
 
 const cellTone = { secure: "bg-good-tint text-good", developing: "bg-warn-tint text-warn", gap: "bg-gap-tint text-gap" } as const;
 
@@ -49,11 +47,29 @@ export function ClassAnalyser() {
   const [analysedRaw, setAnalysedRaw] = useState("");
   const [importNotes, setImportNotes] = useState<string[]>([]);
   const [needsReview, setNeedsReview] = useState(false);
+  const [questionWise, setQuestionWise] = useState(false);
   const [tidy, setTidy] = useState<{ text: string; notes: string[] } | null>(null);
   const [mounted, setMounted] = useState(false);
   const resultsRef = useRef<HTMLDivElement>(null);
   const issuesRef = useRef<HTMLDivElement>(null);
   const { onStart, onComplete } = useToolTracking("class_test_analyser");
+  const [lang, setLang] = useState<TeacherLang>("en");
+  const t = ANALYSER_TEXT[lang];
+  useEffect(() => {
+    try {
+      if (localStorage.getItem(TEACHER_LANG_KEY) === "hi") setLang("hi");
+    } catch {
+      /* ignore */
+    }
+  }, []);
+  function chooseLang(l: TeacherLang) {
+    setLang(l);
+    try {
+      localStorage.setItem(TEACHER_LANG_KEY, l);
+    } catch {
+      /* ignore */
+    }
+  }
 
   useEffect(() => {
     setMounted(true);
@@ -99,6 +115,14 @@ export function ClassAnalyser() {
       setResult(null);
       return;
     }
+    if (looksQuestionWise(r.text)) {
+      // Question-wise sheets need the paper map first; analysing Q1…Qn as "topics" would mislead.
+      setQuestionWise(true);
+      setIssues([]);
+      setData(null);
+      setResult(null);
+      return;
+    }
     analyse(r.text, false);
   }
 
@@ -110,11 +134,20 @@ export function ClassAnalyser() {
   return (
     <ToolShell id="class-analyser" title="Class test analyser">
       <InstituteBar />
-      <ol className="list-decimal space-y-1 pl-5 text-[0.9375rem] text-ink-soft">
-        <li>Put one student per row and one topic per column — roll numbers are better than names.</li>
-        <li>Optionally add a <strong>MAX</strong> row under the header with each topic's maximum marks. Without it, values are read as percentages.</li>
-        <li>Leave a cell blank or write <strong>AB</strong> if the student was absent.</li>
+      <div className="mb-3 flex justify-end gap-1 text-sm" role="group" aria-label="Language / भाषा">
+        {(["en", "hi"] as const).map((l) => (
+          <button key={l} type="button" onClick={() => chooseLang(l)} aria-pressed={lang === l} lang={l === "hi" ? "hi" : "en"}
+            className={cn("min-h-9 rounded-full border px-3", lang === l ? "border-brand bg-brand-tint/60 font-medium" : "border-line-strong")}>
+            {l === "en" ? "English" : "हिंदी"}
+          </button>
+        ))}
+      </div>
+      <ol className="list-decimal space-y-1 pl-5 text-[0.9375rem] text-ink-soft" lang={lang}>
+        <li>{t.step1}</li>
+        <li>{t.step2a}<strong>MAX</strong>{t.step2b}</li>
+        <li>{t.step3a}<strong>AB</strong>{t.step3b}</li>
       </ol>
+      <p className="mt-2 text-sm text-ink-muted" lang={lang} data-testid="totals-only-hint">{t.totalsOnly}</p>
 
       <div className="mt-5 flex flex-wrap gap-2">
         <Button
@@ -136,7 +169,7 @@ export function ClassAnalyser() {
       </div>
       <ImportPanel onImported={onImported} onStart={onStart} />
 
-      <label htmlFor="class-data" className="field-label mt-5">Or paste from Excel / Google Sheets</label>
+      <label htmlFor="class-data" className="field-label mt-5">{t.pasteLabel}</label>
       <textarea
         id="class-data"
         rows={8}
@@ -148,6 +181,7 @@ export function ClassAnalyser() {
           onStart();
           setIsSample(false);
           setText(e.target.value);
+          if (looksQuestionWise(e.target.value)) setQuestionWise(true);
         }}
         aria-describedby="class-data-hint"
       />
@@ -160,13 +194,23 @@ export function ClassAnalyser() {
           {importNotes.map((n) => <li key={n}>• {n}</li>)}
         </ul>
       ) : null}
+      <PaperMapPanel
+        text={text}
+        open={questionWise}
+        onConverted={(converted, notes) => {
+          setText(converted);
+          setImportNotes(notes);
+          setQuestionWise(false);
+          analyse(converted, false);
+        }}
+      />
       {needsReview ? (
         <p className="mt-3 rounded-lg border border-warn/40 bg-warn-tint/60 p-3 text-sm text-ink" data-testid="import-review">
           Check the numbers above against the marksheet, correct anything that's wrong, then press <strong>Analyse class</strong>.
         </p>
       ) : null}
       <div className="mt-4">
-        <Button onClick={() => analyse()} disabled={!text.trim()}>Analyse class</Button>
+        <Button onClick={() => analyse()} disabled={!text.trim()}>{t.analyse}</Button>
       </div>
 
       {issues.length ? (
@@ -195,7 +239,7 @@ export function ClassAnalyser() {
 
       {result && data ? (
         <div ref={resultsRef} tabIndex={-1} className="mt-10 border-t border-line pt-8 focus:outline-none" data-testid="class-results">
-          <h3 className="font-sans text-xl font-semibold">Class overview</h3>
+          <h3 className="font-sans text-xl font-semibold" lang={lang}>{t.overview}</h3>
           {warnings.map((w) => (
             <p key={w} role="status" className="mt-1 text-sm text-warn" data-testid="class-warning">{w}</p>
           ))}
@@ -204,10 +248,10 @@ export function ClassAnalyser() {
           ) : null}
           <dl className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
             {[
-              ["Students", String(result.students.length)],
-              ["Topics", String(result.topics.length)],
-              ["Class average", result.classAverage === null ? "—" : `${result.classAverage}%`],
-              ["Whole-class reteach", String(result.topics.filter((t) => t.action === "whole_class").length)],
+              [t.students, String(result.students.length)],
+              [t.topics, String(result.topics.length)],
+              [t.average, result.classAverage === null ? "—" : `${result.classAverage}%`],
+              [t.wholeClass, String(result.topics.filter((x) => x.action === "whole_class").length)],
             ].map(([k, v]) => (
               <div key={k} className="rounded-xl border border-line bg-paper p-3">
                 <dt className="text-xs text-ink-muted">{k}</dt>
@@ -216,31 +260,31 @@ export function ClassAnalyser() {
             ))}
           </dl>
 
-          <h3 className="mt-10 font-sans text-xl font-semibold">Teaching plan</h3>
+          <h3 className="mt-10 font-sans text-xl font-semibold" lang={lang}>{t.plan}</h3>
           <p className="mt-1 text-sm text-ink-muted">
-            Ordered by urgency. "Whole class" means at least a third of students who attempted the topic scored below 50%.
+            {t.planHint}
           </p>
           <ol className="mt-4 space-y-3" data-testid="teaching-plan">
-            {result.plan.map((t) => (
-              <li key={t.name} className="rounded-xl border border-line p-4">
+            {result.plan.map((p) => (
+              <li key={p.name} className="rounded-xl border border-line p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="font-semibold text-ink">{t.name}</span>
-                  <Badge tone={actionInfo[t.action].tone}>{actionInfo[t.action].label}</Badge>
+                  <span className="font-semibold text-ink">{p.name}</span>
+                  <Badge tone={actionTone[p.action]}>{t.actions[p.action]}</Badge>
                 </div>
                 <p className="tabular mt-1 text-sm text-ink-soft">
-                  Average {t.average}% · {t.belowHalf.length} of {t.attempted} below 50% ({Math.round(t.shareBelowHalf * 100)}%)
+                  {t.avgLine(p.average, p.belowHalf.length, p.attempted, Math.round(p.shareBelowHalf * 100))}
                 </p>
-                {t.belowHalf.length && t.action !== "whole_class" ? (
+                {p.belowHalf.length && p.action !== "whole_class" ? (
                   <p className="mt-1 text-sm text-ink-soft">
-                    <span className="font-medium text-ink">Recap group:</span> {t.belowHalf.join(", ")}
+                    <span className="font-medium text-ink">{t.recap}</span> {p.belowHalf.join(", ")}
                   </p>
                 ) : null}
               </li>
             ))}
           </ol>
 
-          <h3 className="mt-10 font-sans text-xl font-semibold">Gap map</h3>
-          <p className="mt-1 text-sm text-ink-muted">Percent per topic. Green ≥ 75%, amber 50–74%, red &lt; 50%, "—" = absent.</p>
+          <h3 className="mt-10 font-sans text-xl font-semibold" lang={lang}>{t.gapMap}</h3>
+          <p className="mt-1 text-sm text-ink-muted">{t.gapHint}</p>
           <div className="mt-4 max-h-[32rem] overflow-auto rounded-xl border border-line">
             <table className="w-full border-collapse text-left text-sm">
               <caption className="sr-only">Percent score of each student in each topic</caption>
@@ -282,6 +326,8 @@ export function ClassAnalyser() {
             <Button variant="secondary" onClick={() => downloadText("heramb-reteach-groups.csv", groupsToCsv(result))}>Download reteach groups (CSV)</Button>
             <Button variant="secondary" onClick={printReports}>Print individual student reports</Button>
           </div>
+
+          <ShareSummary key={`share-${analysedRaw.length}-${analysedRaw.slice(0, 40)}`} analysis={result} isSample={isSample} />
 
           <TeachingSummary key={`sum-${analysedRaw.length}-${analysedRaw.slice(0, 40)}`} analysis={result} />
 

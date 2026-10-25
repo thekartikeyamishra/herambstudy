@@ -1,5 +1,61 @@
 # Changelog
 
+## 0.10.0 — 24 October 2026
+
+Focus: turn shared batch results into a local network effect, and make go-live problems visible before a meeting.
+
+### Added
+- **City benchmark.** Next to each weak chapter on the institute dashboard: "Prayagraj: 52%" — the average of OTHER founding institutes in the same city for that chapter (latest test, last 4 months). Shown only when at least 4 other institutes contribute (`BENCHMARK_MIN_INSTITUTES`, default 5 including the viewer); no institute is ever named. Chapter names are matched loosely ("Laws of Motion" = "laws-of-motion"). Deleting an institute removes it from every city average.
+- **Batch-name suggestions** when sharing with the head (names already used by the institute), so "11A" and "11 JEE A" don't split a batch's history.
+- **Automatic sharing** (opt-in per device): share each real test's class summary without an extra tap.
+- **Paid plan switch, no billing code needed:** set **Pro until** on `/admin` after payment (e.g. a Razorpay payment link). Pro institutes get their **full batch history with CSV export** on the institute dashboard; the free plan keeps each batch's latest 2 shared tests. Pro switches off by itself after the date. Shown as "Pro until" on `/admin` and in its CSV export.
+- `docs/BUSINESS-MODEL.md`: six revenue lines with margins, and why free users cost almost nothing.
+- **Launch readiness on `/admin`** — a checklist of production settings (storage, site address, own domain, email, signed links, alerts, cron, photo reading, price lock, legal placeholders) with the exact fix for each. Booleans only; no values are shown.
+
+### Changed
+- One shared test per batch per day: re-sharing (e.g. an automatic share, then the same test with its real name) replaces it instead of duplicating.
+- `/pricing` lists the head's dashboard and city benchmark (free) and full-year batch history (Institute plan) as available.
+- Firestore rules explicitly deny `benchmarks/**`; privacy policy covers city averages.
+
+## 0.9.0 — 24 October 2026
+
+Focus: give the institute head a reason to keep checking (results, not just usage), and close the remaining war-game gaps.
+
+### Added
+- **Batch results for the head.** After analysing a real test, a connected teacher can tap **Share with the head**: only class-level numbers (batch, test, date, class average, and per chapter the average, attempted and below-50% counts) are sent — the schema rejects anything else. The institute dashboard shows each batch's latest test, its three weakest chapters with ▲/▼ change since the batch's previous test, and the class-average trend. Re-sharing the same batch + test + date replaces it. `POST /api/institutes/summaries`.
+- Founding sign-up limit per network raised from 3 to 10 per 10 minutes (`RATE_LIMIT_JOIN_PER_IP`), so several heads can join together at a meetup on one Wi-Fi.
+- **Hindi for teachers** in the class analyser (English / हिंदी switch, remembered on the device): steps, buttons, overview, teaching plan and actions, gap map.
+- **"Only total marks?" guidance** in the analyser: write section totals while checking (3 numbers per sheet) to still get weak subjects and students.
+- **Optional founding price lock** (`FOUNDING_PRICE_CAP_INR`): when set, `/founding` promises "never more than ₹X a month"; when empty it promises only a founding discount, and that the free plan can always be kept.
+
+### Changed
+- Privacy policy covers shared class summaries.
+
+## 0.8.0 — 24 October 2026
+
+Focus: remove the reasons a Prayagraj coaching would try Heramb once and stop (war-game findings).
+
+### Added
+- **Question-wise / OMR marks → chapters ("paper map").** Teachers type once which questions belong to which chapter ("1-10: Kinematics"); Heramb adds them up per chapter. Works with right/wrong answers (C/W/blank or 1/0/blank, with +4/−1 style marking) or marks per question (MAX row or a default per question). Opens by itself when a sheet has 5+ question columns; the map is remembered on the device. No re-marking by chapter.
+- **OMR option exports with an answer key.** Cells with the option marked (A–D or 1–4) are checked against a typed key ("ABCDA BCDAB…") or a KEY row in the sheet; `*` marks a bonus question.
+- **Tracker backup reminder** — after tests are saved, the tracker shows how many aren't in a backup yet, so a phone change or cleared browser can't silently lose a batch's history.
+- **One-tap sending per student.** A WhatsApp button for every student; optional roll → WhatsApp number list (kept only on the teacher's device) opens each chat directly, otherwise WhatsApp asks which chat.
+- **Printable report slips with QR codes** (about 4 cm, sized to scan from paper; very long links fall back to "ask for it on WhatsApp") — 8 per A4 page: student, test, average, focus topics and a QR code to the full report. For big batches and parents without smartphones nearby.
+- **Hindi.** Report language (English / हिंदी) chosen when creating links; students can switch on the report page; Hindi WhatsApp messages, Hindi parent note, Hindi slips, a Hindi line on the founding page and on broken-link pages.
+- **Weekly test day** at sign-up; the first follow-up is scheduled for the day after the next test. `/admin` shows whether the latest test was analysed (✓ / due today / waiting / ✗), a "Missed latest test" filter, a "Day after next test" follow-up button, editable test day, and a **Weekly summary** WhatsApp message with last week's numbers.
+
+### Changed
+- `qrcode-generator` 2.0.4 (MIT, no dependencies) for client-side QR codes.
+- Privacy policy covers paper maps, report language and on-device WhatsApp numbers.
+
+## 0.7.3 — 22 October 2026
+
+Focus: measure the Google Ads pilot.
+
+### Added
+- Founding sign-ups from paid clicks are tagged `source: ads` — via `/founding?source=ads`, Google auto-tagging (`gclid`) or `utm_medium=cpc` — and shown as "via ads" on `/admin` and in its CSV export.
+- GA4 event `founding_institute_joined` (with `outcome` = source) after a successful sign-up, for import as a Google Ads conversion. Fires only for visitors who allowed analytics.
+
 ## 0.7.2 — 19 October 2026
 
 Focus: deployments that cannot be broken by leftover files, whatever way the release is copied in.

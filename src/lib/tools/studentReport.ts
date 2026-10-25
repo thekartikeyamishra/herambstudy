@@ -40,6 +40,8 @@ export const reportSchema = z.object({
   // Optional institute code (founding programme). Lets anonymous "report opened / saved /
   // helped" counts reach the right institute. Older links without it stay valid.
   c: z.string().regex(CODE_PATTERN).optional(),
+  // Optional report language ("hi" = Hindi). Absent = English, so older links are unchanged.
+  l: z.literal("hi").optional(),
 }).refine((r) => r.p.length === r.n.length && r.a.length === r.n.length, "Lengths must match");
 
 export type StudentReport = z.infer<typeof reportSchema>;
@@ -84,7 +86,7 @@ export function decodeReport(fragment: string): StudentReport | null {
 export function buildReports(
   data: Dataset,
   analysis: ClassAnalysis,
-  meta: { institute: string; test: string; date: string; code?: string | null },
+  meta: { institute: string; test: string; date: string; code?: string | null; lang?: "en" | "hi" },
 ): StudentReport[] {
   const n = data.topics.map((t) => t.name.slice(0, 80));
   const a = analysis.topics.map((t) => (t.attempted > 0 ? t.average : null));
@@ -98,6 +100,7 @@ export function buildReports(
     p: s.percents.map((x) => (x === null || x === undefined ? null : x)),
     a,
     ...(meta.code ? { c: meta.code } : {}),
+    ...(meta.lang === "hi" ? { l: "hi" as const } : {}),
   }));
 }
 
@@ -127,8 +130,10 @@ export function focusTopics(r: StudentReport): string[] {
 }
 
 /** WhatsApp-ready text: one line per student with their personal link. */
-export function linksAsMessageList(origin: string, reports: StudentReport[], testName: string): string {
-  return reports.map((r) => `${r.s} — your ${testName || "test"} report: ${reportUrl(origin, r)}`).join("\n");
+export function linksAsMessageList(origin: string, reports: StudentReport[], testName: string, lang: "en" | "hi" = "en"): string {
+  return reports
+    .map((r) => (lang === "hi" ? `${r.s} — आपकी ${testName || "टेस्ट"} रिपोर्ट: ${reportUrl(origin, r)}` : `${r.s} — your ${testName || "test"} report: ${reportUrl(origin, r)}`))
+    .join("\n");
 }
 
 export function linksAsCsv(origin: string, reports: StudentReport[]): string {

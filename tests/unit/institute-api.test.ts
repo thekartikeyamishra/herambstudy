@@ -13,6 +13,7 @@ import {
   handlePublicStats,
   handleUsageEvents,
   handleValueFeedback,
+  handleShareSummary,
 } from "@/lib/server/instituteHandlers";
 import { signSession, verifySession, passwordMatches } from "@/lib/server/adminAuth";
 import { signToken, clearDevOutbox, devOutbox } from "@/lib/server/email";
@@ -226,5 +227,68 @@ describe("weekly digest", () => {
     const subjects = devOutbox().map((m) => m.subject);
     expect(subjects.some((s) => /Founding institute #01 of 2/.test(s))).toBe(true);
     expect(subjects.some((s) => /New founding institute: Sunrise Classes/.test(s))).toBe(true);
+  });
+});
+
+describe("test day at sign-up", () => {
+  it("stores the test day and schedules the first follow-up", async () => {
+    const res = await handleInstituteJoin(post("/api/institutes", join({ testDay: 0, phone: "9876500001" })));
+    expect(res.status).toBe(201);
+    const { code } = (await res.json()) as { code: string };
+    const rec = await institutes.get(code);
+    expect(rec?.testDay).toBe(0);
+    expect(rec?.nextFollowUp).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(new Date(`${rec!.nextFollowUp}T00:00:00Z`).getUTCDay()).toBe(1); // Monday, the day after a Sunday test
+  });
+});
+
+
+describe("batch results shared with the head", () => {
+  const summary = (over: Record<string, unknown> = {}) => ({
+    batch: "11 JEE A", test: "Weekly 6", date: "2026-10-20", students: 30, average: 55,
+    topics: [{ n: "Optics", avg: 38, att: 30, below: 17 }, { n: "Waves", avg: 71, att: 29, below: 6 }], ...over,
+  });
+  it("stores aggregates only, replaces re-shares, and shows them on the dashboard", async () => {
+    const { code } = await newInstitute();
+    expect((await handleShareSummary(post("/api/institutes/summaries", { code, summary: summary() }))).status).toBe(200);
+    expect((await handleShareSummary(post("/api/institutes/summaries", { code, summary: summary({ average: 56 }) }))).status).toBe(200);
+    const stats = await (await handleInstituteStats(post("/api/institutes/stats", { code }))).json();
+    expect(stats.summaries).toHaveLength(1);
+    expect(stats.summaries[0].average).toBe(56);
+  });
+  it("refuses anything that could carry student data, and bad counts", async () => {
+    const { code } = await newInstitute();
+    const sneaky = summary({ topics: [{ n: "Optics", avg: 38, att: 30, below: 17, students: ["R01 Asha"] }] });
+    expect((await handleShareSummary(post("/api/institutes/summaries", { code, summary: sneaky }))).status).toBe(422);
+    expect((await handleShareSummary(post("/api/institutes/summaries", { code, summary: summary({ names: ["Asha"] }) }))).status).toBe(422);
+    expect((await handleShareSummary(post("/api/institutes/summaries", { code, summary: summary({ topics: [{ n: "Optics", avg: 38, att: 10, below: 17 }] }) }))).status).toBe(422);
+    expect((await handleShareSummary(post("/api/institutes/summaries", { code: "HRB-2222-2222", summary: summary() }))).status).toBe(404);
+  });
+});
+
+
+describe("city benchmark on the dashboard", () => {
+  it("shows the city average only once 4 other institutes in the city share the chapter", async () => {
+    const codes: string[] = [];
+    for (let i = 0; i < 5; i++) codes.push((await newInstitute({ city: "Prayagraj" })).code);
+    const share = (code: string, avg: number) =>
+      handleShareSummary(post("/api/institutes/summaries", { code, summary: { batch: "11 A", test: "W1", date: new Date().toISOString().slice(0, 10), students: 20, average: avg, topics: [{ n: "Optics", avg, att: 20, below: 5 }] } }));
+    for (const [i, c] of codes.slice(0, 4).entries()) await share(c, 40 + i * 10);
+    let stats = await (await handleInstituteStats(post("/api/institutes/stats", { code: codes[0] }))).json();
+    expect(stats.benchmark).toEqual({}); // only 3 others
+    await share(codes[4]!, 80);
+    stats = await (await handleInstituteStats(post("/api/institutes/stats", { code: codes[0] }))).json();
+    expect(stats.benchmark).toEqual({ optics: { avg: 65, institutes: 4 } });
+  });
+});
+
+import { launchReadiness } from "@/lib/server/instituteHandlers";
+
+describe("launch readiness", () => {
+  it("reports booleans only and flags missing production settings", () => {
+    const items = launchReadiness({ kind: "unavailable", reason: "x" } as never, { CRON_SECRET: "short" });
+    expect(items.find((i) => i.key === "storage")).toMatchObject({ ok: false, critical: true });
+    expect(items.find((i) => i.key === "cron")?.ok).toBe(false);
+    expect(JSON.stringify(items)).not.toMatch(/short/);
   });
 });

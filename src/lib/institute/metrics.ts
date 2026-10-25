@@ -35,6 +35,8 @@ export type InstituteMetrics = {
   weeklyStreak: number;
   weeks: Array<{ weekStart: string; analyses: number; studentActions: number }>;
   nextStep: string;
+  /** Date of the most recent real test analysed (IST day), if any. */
+  lastRealTest: string | null;
 };
 
 const TEACHER_ACTIVITY: UsageEvent[] = ["analysis_real", "followup_run", "tracker_saved", "links_created", "links_shared", "import_file", "import_sheet", "import_photo"];
@@ -233,6 +235,7 @@ export function computeMetrics(input: {
     weeklyStreak,
     weeks,
     nextStep,
+    lastRealTest: realDays.at(-1) ?? null,
   };
 }
 

@@ -137,7 +137,7 @@ export function normaliseExport(input: string[][]): MappingResult {
     const questionLike = keep.filter((i) => QUESTION.test(col(header, i))).length;
     if (questionLike >= 5) {
       notes.push(
-        "These look like question-wise marks (Q1, Q2…). For a chapter plan, add a row under the header whose first cell is “Chapter” and put each question's chapter in it — Heramb will add the questions up per chapter.",
+        "These look like question-wise marks (Q1, Q2…). Use “Question-wise marks → chapters” below to add them up per chapter.",
       );
     }
   }

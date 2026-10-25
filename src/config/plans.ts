@@ -28,6 +28,8 @@ export type FeatureId =
   | "question_bank"
   | "multi_branch"
   | "data_export"
+  | "city_benchmark"
+  | "batch_history"
   | "priority_support";
 
 /** available = works today; pilot = with pilot partners; planned = not built yet. */
@@ -46,7 +48,9 @@ export const FEATURES: Record<FeatureId, { label: string; availability: Availabi
   branded_reports: { label: "Reports on your institute's letterhead", availability: "planned" },
   parent_delivery: { label: "Send reports to parents (WhatsApp / email)", availability: "planned" },
   multi_teacher: { label: "All teachers and subjects in one workspace", availability: "planned" },
-  head_dashboard: { label: "Principal / owner dashboard across batches", availability: "planned" },
+  head_dashboard: { label: "Head's dashboard: each batch's latest results and weakest chapters", availability: "available" },
+  city_benchmark: { label: "City benchmark: your chapters vs other founding institutes", availability: "available" },
+  batch_history: { label: "Full-year batch history for the head, with CSV export", availability: "available" },
   student_practice: { label: "Targeted practice assigned to students", availability: "pilot" },
   question_bank: { label: "Your own topic-tagged question bank", availability: "planned" },
   multi_branch: { label: "Multiple branches, central reporting", availability: "planned" },
@@ -74,7 +78,7 @@ export const PLANS: Plan[] = [
     name: "Free",
     forWho: "Any teacher, tutor or student",
     priceInr: { amount: 0, unit: "per year" },
-    features: ["browser_tools", "local_tracker", "rule_summaries", "ai_summaries", "term_reports", "student_links", "data_export"],
+    features: ["browser_tools", "local_tracker", "rule_summaries", "ai_summaries", "term_reports", "student_links", "data_export", "head_dashboard", "city_benchmark"],
     aiPerDay: 5,
   },
   {
@@ -82,7 +86,7 @@ export const PLANS: Plan[] = [
     name: "Teacher Pro",
     forWho: "Teachers and tutors who track classes all year",
     priceInr: null,
-    features: ["browser_tools", "local_tracker", "rule_summaries", "ai_summaries", "term_reports", "student_links", "data_export", "cloud_history", "multi_device", "branded_reports"],
+    features: ["browser_tools", "local_tracker", "rule_summaries", "ai_summaries", "term_reports", "student_links", "data_export", "head_dashboard", "city_benchmark", "cloud_history", "multi_device", "branded_reports"],
     aiPerDay: 50,
   },
   {
@@ -93,7 +97,7 @@ export const PLANS: Plan[] = [
     features: [
       "browser_tools", "local_tracker", "rule_summaries", "ai_summaries", "term_reports", "student_links", "data_export",
       "cloud_history", "multi_device", "branded_reports", "parent_delivery", "multi_teacher", "head_dashboard",
-      "student_practice", "question_bank", "priority_support",
+      "city_benchmark", "batch_history", "student_practice", "question_bank", "priority_support",
     ],
     aiPerDay: 500,
     highlight: true,
@@ -106,7 +110,7 @@ export const PLANS: Plan[] = [
     features: [
       "browser_tools", "local_tracker", "rule_summaries", "ai_summaries", "term_reports", "student_links", "data_export",
       "cloud_history", "multi_device", "branded_reports", "parent_delivery", "multi_teacher", "head_dashboard",
-      "student_practice", "question_bank", "multi_branch", "priority_support",
+      "city_benchmark", "batch_history", "student_practice", "question_bank", "multi_branch", "priority_support",
     ],
     aiPerDay: 2000,
   },

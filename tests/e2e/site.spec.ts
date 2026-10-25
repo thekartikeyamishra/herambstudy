@@ -607,7 +607,7 @@ test.describe("v0.7 founding programme", () => {
     await expect(page.getByTestId("class-results")).toBeVisible();
     await expect(page.locator("#class-data")).not.toHaveValue(/Asha/);
     await page.getByRole("button", { name: "Create student report links" }).click();
-    await page.getByLabel("Test name").fill("Unit test 3");
+    await page.getByTestId("student-links").getByLabel("Test name").fill("Unit test 3");
     const download = page.waitForEvent("download");
     await page.getByRole("button", { name: "Download links (CSV)" }).click();
     await download;
@@ -638,5 +638,77 @@ test.describe("v0.7 founding programme", () => {
     const dl = page.waitForEvent("download");
     await page.getByRole("button", { name: "Add to calendar" }).click();
     expect((await dl).suggestedFilename()).toBe("heramb-revision-reminder.ics");
+  });
+});
+
+test.describe("v0.8 war-game fixes", () => {
+  test("question-wise OMR answers are converted to chapters and analysed", async ({ page }) => {
+    await page.goto("/resources/class-test-analyser");
+    const rows = ["Roll\tQ1\tQ2\tQ3\tQ4\tQ5\tQ6", "R01\tC\tC\tW\tC\t\tW", "R02\tW\tW\tC\tC\tC\tC", "R03\tC\tW\t\tW\tC\tC"];
+    await page.locator("#class-data").fill(rows.join("\n"));
+    const panel = page.getByTestId("paper-map");
+    await expect(panel).toBeVisible();
+    await page.getByLabel("Paper map (one chapter per line)").fill("1-3: Kinematics\n4-6: Optics");
+    await page.getByRole("button", { name: "Convert and analyse" }).click();
+    await expect(page.getByTestId("class-results")).toBeVisible();
+    await expect(page.getByTestId("teaching-plan")).toContainText("Kinematics");
+    await expect(page.getByTestId("import-notes")).toContainText("Combined 6 questions into 2 chapters");
+  });
+
+  test("Hindi report links, per-student WhatsApp and language switch", async ({ page }) => {
+    await page.goto("/resources/class-test-analyser");
+    await page.getByRole("button", { name: "Load a fictional class" }).click();
+    await page.getByRole("button", { name: "Create student report links" }).click();
+    await page.getByLabel("Report language").selectOption("hi");
+    await expect(page.getByRole("button", { name: /Send .* report on WhatsApp/ }).first()).toBeVisible();
+    await page.getByRole("button", { name: /Add WhatsApp numbers/ }).click();
+    const first = (await page.getByTestId("student-links").locator("li span.font-medium").first().textContent())!.trim();
+    await page.getByLabel("Roll number and WhatsApp number, one per line").fill(`${first} 9876543210`);
+    await expect(page.getByRole("button", { name: /WhatsApp numbers: 1 saved/ })).toBeVisible();
+    const href = await page.getByRole("link", { name: /Preview/ }).first().getAttribute("href");
+    await page.goto(href!);
+    await expect(page.getByTestId("student-report")).toContainText("आपके विषय");
+    await page.getByTestId("student-report").getByRole("button", { name: "English" }).click();
+    await expect(page.getByTestId("student-report")).toContainText("Your topics");
+  });
+
+  test("weekly test day is part of the founding form", async ({ page }) => {
+    await page.goto("/founding");
+    await expect(page.getByLabel(/Weekly test day/)).toBeVisible();
+  });
+});
+
+test.describe("v0.9 batch results", () => {
+  test("a teacher shares a class summary and the head sees the batch", async ({ page }) => {
+    await page.goto("/founding");
+    await page.getByLabel("Institute name").fill(`Batch Classes ${Date.now()}`);
+    await page.getByLabel("City").fill("Prayagraj");
+    await page.getByLabel("Coaching institute").check();
+    await page.getByLabel("Contact person").fill("Ravi");
+    await page.getByLabel("Their role").selectOption({ index: 1 });
+    await page.getByLabel(/Phone/).fill("9876543210");
+    await page.getByLabel(/I agree that Heramb\.study may store these contact details/).check();
+    await page.waitForTimeout(2700);
+    await page.getByRole("button", { name: "Get our institute code" }).click();
+    const code = (await page.getByTestId("join-code").textContent({ timeout: 30_000 }))!.trim();
+
+    await page.goto("/resources/class-test-analyser");
+    await page.locator("#class-data").fill("Roll no\tOptics\tWaves\nMAX\t20\t20\nR01\t6\t15\nR02\t8\t17\nR03\t14\t12");
+    await page.getByRole("button", { name: "Analyse class" }).click();
+    const share = page.getByTestId("share-summary");
+    await share.getByLabel("Batch", { exact: true }).fill("11 JEE A");
+    await share.getByLabel("Test name", { exact: true }).fill("Weekly 6");
+    await page.getByRole("button", { name: "Share with the head" }).click();
+    await expect(page.getByTestId("share-summary")).toContainText("Shared", { timeout: 30_000 });
+
+    await page.goto(`/institute#${code}`);
+    await expect(page.getByTestId("batch-results")).toContainText("11 JEE A", { timeout: 20_000 });
+    await expect(page.getByTestId("batch-results")).toContainText("Optics");
+  });
+
+  test("the analyser switches to Hindi for teachers", async ({ page }) => {
+    await page.goto("/resources/class-test-analyser");
+    await page.getByRole("button", { name: "हिंदी" }).click();
+    await expect(page.getByRole("button", { name: "कक्षा का विश्लेषण करें" })).toBeVisible();
   });
 });

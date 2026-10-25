@@ -27,6 +27,17 @@ Only **counts** are sent: no marks, names, roll numbers or topic names. The firs
 5. From the success screen, tap **Invite teachers on WhatsApp**. Each teacher's analyser is then connected automatically.
 6. Before leaving, put a **Next follow-up** date (about 7 days out) on the owner dashboard.
 
+## 2b. v0.8 additions to use in every meeting
+
+- **Ask the test day** ("Which day is your weekly test?") and pick it on the form. The first follow-up is then scheduled automatically for the day after their next test, and `/admin` shows whether each week's test was analysed.
+- **Ask how marks are recorded.**
+  - *Chapter-wise:* paste or import as usual.
+  - *Question-wise, OMR or online test (C/W):* paste the sheet, then type the paper map once ("1-10: Kinematics"). Heramb adds the questions up per chapter, with +4/−1 marking if needed.
+  - *Totals only:* chapter analysis needs either question-wise answers or chapter-wise marks. Offer to set up the paper map for their next test.
+- **Big batches:** use **Print report slips (QR)**, 8 per A4 page, to hand out in class. Or add roll → WhatsApp numbers once on the teacher's phone, so each student's WhatsApp button opens their chat directly.
+- **Hindi-medium:** choose **हिंदी** as the report language. Students can switch on the report page, and the parent note has a Hindi copy button.
+- **Weekly summary on WhatsApp:** in `/admin`, choose the nudge **Weekly summary** for heads who don't read email.
+
 ## 3. The seven programme goals and how each is measured
 
 Each institute sees all seven on `/institute#CODE`. You see them for every institute on `/admin`. All are computed from the anonymous daily counts by `computeMetrics` in `src/lib/institute/metrics.ts`.

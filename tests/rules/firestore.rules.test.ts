@@ -29,7 +29,7 @@ beforeEach(async () => {
   });
 });
 
-const collections = ["inviteRequests", "contactMessages", "pilotApplications", "rateLimits", "institutes", "institutes/HRB-2345-6789/days", "institutes/HRB-2345-6789/devices", "meta", "anythingElse"];
+const collections = ["inviteRequests", "contactMessages", "pilotApplications", "rateLimits", "institutes", "institutes/HRB-2345-6789/days", "institutes/HRB-2345-6789/devices", "meta", "benchmarks", "anythingElse"];
 
 describe.each([
   ["unauthenticated visitor", () => env.unauthenticatedContext()],

@@ -33,7 +33,7 @@ This plan takes about 45 minutes, by hand, on your own laptop and phone. It need
 | A3 | Fill in the form, wait 3 s, then submit | Shows code `HRB-XXXX-XXXX`, "Founding institute #01 of 50", and the WhatsApp invite and copy buttons |
 | A4 | `/dev` → Dev inbox | Welcome email (only if you gave an email) and the owner alert, both with the code |
 | A5 | Open `/institute` | The dashboard loads by itself (this browser is connected). Health is "Not activated", 0 of 7 |
-| A6 | Submit the form again 3 times within 10 minutes | The 4th attempt is rate-limited |
+| A6 | Submit the form 10 more times within 10 minutes | The 11th attempt is rate-limited (default `RATE_LIMIT_JOIN_PER_IP=10`) |
 
 ## B. Teacher (browser B)
 
