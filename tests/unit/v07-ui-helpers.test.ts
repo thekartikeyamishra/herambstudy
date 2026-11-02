@@ -9,7 +9,7 @@ describe("revision reminder (.ics)", () => {
     expect(ics.startsWith("BEGIN:VCALENDAR\r\n")).toBe(true);
     expect(ics.endsWith("END:VCALENDAR\r\n")).toBe(true);
     expect(ics).toContain("BEGIN:VALARM");
-    expect(ics).toContain("UID:abc@heramb.study");
+    expect(ics).toContain("UID:abc@herambstudy.com");
   });
   it("schedules 18:00 IST the day before the test", () => {
     expect(ics).toContain("DTSTART:20261101T123000Z");

@@ -71,6 +71,25 @@ export function ClassAnalyser() {
     }
   }
 
+  // Results handed over from the test builder (sessionStorage, one use).
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem("heramb.analyser-prefill.v1");
+      if (!raw) return;
+      sessionStorage.removeItem("heramb.analyser-prefill.v1");
+      const p = JSON.parse(raw) as { text?: unknown; notes?: unknown; sample?: unknown };
+      if (typeof p.text !== "string" || !p.text.trim()) return;
+      setText(p.text);
+      setIsSample(p.sample === true);
+      setImportNotes(Array.isArray(p.notes) ? p.notes.filter((n): n is string => typeof n === "string").slice(0, 6) : []);
+      onStart();
+      analyse(p.text, p.sample === true);
+    } catch {
+      /* nothing to prefill */
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     setMounted(true);
     const clear = () => document.body.classList.remove("print-reports");
@@ -282,6 +301,18 @@ export function ClassAnalyser() {
               </li>
             ))}
           </ol>
+
+          {result.plan.some((p) => p.action === "whole_class" || p.action === "small_group") ? (
+            <p className="mt-4 text-sm" data-testid="retest-link">
+              <Link
+                href={`/test-builder#retest=${encodeURIComponent(result.plan.filter((p) => p.action === "whole_class" || p.action === "small_group").slice(0, 10).map((p) => p.name).join("|"))}`}
+                className="font-medium text-brand underline underline-offset-4"
+              >
+                Make a retest on these weak chapters →
+              </Link>{" "}
+              <span className="text-ink-muted">(uses your question bank in the test builder)</span>
+            </p>
+          ) : null}
 
           <h3 className="mt-10 font-sans text-xl font-semibold" lang={lang}>{t.gapMap}</h3>
           <p className="mt-1 text-sm text-ink-muted">{t.gapHint}</p>

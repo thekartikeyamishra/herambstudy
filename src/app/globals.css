@@ -165,3 +165,12 @@
   body.print-slips .report-slips { display: grid; grid-template-columns: 1fr 1fr; gap: 0; color: #0E1528; font-family: var(--font-sans), sans-serif; }
   body.print-slips .report-slip { display: flex; gap: 10px; align-items: center; height: 64mm; padding: 6mm; border: 1px dashed #9AA0AE; break-inside: avoid; page-break-inside: avoid; box-sizing: border-box; }
 }
+
+/* Printable test papers: hidden on screen, printed alone, one section per page. */
+.test-print { display: none; }
+@media print {
+  body.print-test > *:not(.test-print) { display: none !important; }
+  body.print-test .test-print { display: block; color: #0E1528; font-family: var(--font-sans), sans-serif; }
+  body.print-test .test-print-page { break-after: page; page-break-after: always; }
+  body.print-test .test-print-page:last-child { break-after: auto; page-break-after: auto; }
+}

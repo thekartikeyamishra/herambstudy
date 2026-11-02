@@ -2,7 +2,7 @@
 /**
  * Production smoke test — run against a PRODUCTION build (`npm run build && npm start`)
  * or the live site:  npm run smoke:prod -- http://localhost:3000
- *                    npm run smoke:prod -- https://heramb.study
+ *                    npm run smoke:prod -- https://herambstudy.com
  * Proves developer tools are absent and the main pages, APIs and SEO files respond.
  */
 const base = (process.argv[2] || "http://localhost:3000").replace(/\/+$/, "");

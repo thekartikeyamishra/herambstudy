@@ -328,7 +328,7 @@ export function launchReadiness(backend: Backend, env: Record<string, string | u
       fix: `NEXT_PUBLIC_SITE_URL (${site}) differs from the domain Vercel serves (${env.VERCEL_PROJECT_PRODUCTION_URL ?? "?"}). Canonical tags, sitemap and links would point to the wrong site, so search engines index nothing. Connect that domain in Vercel → Domains, or set NEXT_PUBLIC_SITE_URL to the live address, then redeploy.`,
       critical: true,
     },
-    { key: "domain", ok: /heramb\.study$/.test(new URL(site).hostname), label: "Own domain (heramb.study) in use", fix: "Connect heramb.study in Vercel → Domains and set NEXT_PUBLIC_SITE_URL=https://heramb.study. A vercel.app address looks temporary to institutes.", critical: false },
+    { key: "domain", ok: !/\.vercel\.app$/.test(new URL(site).hostname) && !site.includes("localhost"), label: "Own domain in use (e.g. herambstudy.com)", fix: "Connect your domain in Vercel → Domains, make it the primary Production domain, and set NEXT_PUBLIC_SITE_URL=https://herambstudy.com. A vercel.app address looks temporary to institutes.", critical: false },
     { key: "email", ok: mail.sending, label: "Email sending on (welcome + weekly summary)", fix: "Set RESEND_API_KEY and EMAIL_FROM (verified domain).", critical: false },
     { key: "tokens", ok: mail.tokens, label: "Signed email links (stop / unsubscribe)", fix: "Set EMAIL_TOKEN_SECRET (32+ random characters).", critical: false },
     { key: "alerts", ok: Boolean(mail.ownerAlerts), label: "New-institute alerts to your inbox", fix: "Set OWNER_NOTIFICATION_EMAIL.", critical: false },

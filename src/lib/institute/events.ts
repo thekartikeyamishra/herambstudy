@@ -27,6 +27,9 @@ export const USAGE_EVENTS = [
   "import_file", // marks imported from a CSV / Excel file
   "import_sheet", // marks imported from a linked Google Sheet
   "import_photo", // marks read from a photo / PDF
+  "paper_created", // a test paper made in the test builder
+  "online_test_taken", // a student submitted an online test (once per test per device)
+  "doubts_logged", // a teacher used the doubt log (at most once per day per device)
 ] as const;
 export type UsageEvent = (typeof USAGE_EVENTS)[number];
 
@@ -39,6 +42,8 @@ export const TEACHER_EVENTS: ReadonlySet<UsageEvent> = new Set([
   "import_file",
   "import_sheet",
   "import_photo",
+  "paper_created",
+  "doubts_logged",
 ]);
 export const STUDENT_EVENTS: ReadonlySet<UsageEvent> = new Set([
   "report_opened",
@@ -46,6 +51,7 @@ export const STUDENT_EVENTS: ReadonlySet<UsageEvent> = new Set([
   "student_helpful_yes",
   "student_helpful_no",
   "reminder_added",
+  "online_test_taken",
 ]);
 
 export const MAX_EVENTS_PER_BATCH = 20;
@@ -116,8 +122,8 @@ export const valueFeedbackSchema = z
           .refine((v) => !UNSAFE.test(v), "Please keep this on one line."),
         z.literal(""),
         z.null(),
-        z.undefined(),
       ])
+      .optional()
       .transform((v) => (typeof v === "string" && v.length ? v : null)),
   })
   .strip();

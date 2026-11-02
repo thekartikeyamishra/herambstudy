@@ -7,7 +7,7 @@
  */
 import { existsSync, readFileSync } from "node:fs";
 
-const PRODUCTION_ORIGINS = ["https://heramb.study", "https://www.heramb.study"];
+const PRODUCTION_ORIGINS = ["https://herambstudy.com", "https://www.herambstudy.com", "https://heramb.study", "https://www.heramb.study"];
 
 export function devToolsAllowed(env = process.env) {
   if (env.NODE_ENV === "development") return true;

@@ -17,7 +17,7 @@
  * Never enabled on the production deployment or the production domain, even if the
  * flag is set there by mistake.
  */
-export const PRODUCTION_ORIGINS = ["https://heramb.study", "https://www.heramb.study"] as const;
+export const PRODUCTION_ORIGINS = ["https://herambstudy.com", "https://www.herambstudy.com", "https://heramb.study", "https://www.heramb.study"] as const;
 
 type Env = Record<string, string | undefined>;
 

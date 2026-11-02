@@ -39,8 +39,8 @@ export type InstituteMetrics = {
   lastRealTest: string | null;
 };
 
-const TEACHER_ACTIVITY: UsageEvent[] = ["analysis_real", "followup_run", "tracker_saved", "links_created", "links_shared", "import_file", "import_sheet", "import_photo"];
-const STUDENT_ACTIVITY: UsageEvent[] = ["report_opened", "report_saved", "student_helpful_yes", "student_helpful_no", "reminder_added"];
+const TEACHER_ACTIVITY: UsageEvent[] = ["analysis_real", "followup_run", "tracker_saved", "links_created", "links_shared", "import_file", "import_sheet", "import_photo", "paper_created", "doubts_logged"];
+const STUDENT_ACTIVITY: UsageEvent[] = ["report_opened", "report_saved", "student_helpful_yes", "student_helpful_no", "reminder_added", "online_test_taken"];
 
 const DAY_MS = 86_400_000;
 const toMs = (iso: string) => Date.parse(`${iso.slice(0, 10)}T00:00:00Z`);
@@ -61,7 +61,7 @@ export function emptyTotals(): Record<UsageEvent, number> {
   return {
     analysis_real: 0, analysis_sample: 0, followup_run: 0, tracker_saved: 0, links_created: 0, links_shared: 0,
     report_opened: 0, report_saved: 0, student_helpful_yes: 0, student_helpful_no: 0, reminder_added: 0,
-    import_file: 0, import_sheet: 0, import_photo: 0,
+    import_file: 0, import_sheet: 0, import_photo: 0, paper_created: 0, online_test_taken: 0, doubts_logged: 0,
   };
 }
 

@@ -363,7 +363,7 @@ export function DevConsole({
       <Section id="safety" title="Production safety" intro="This console, its APIs, the dev inbox and the dev link-signing secret never reach the live site:">
         <ol className="list-decimal space-y-2 pl-5 text-ink-soft">
           <li><strong className="text-ink">Not compiled:</strong> dev routes are <code>*.dev.tsx</code> files, which are only pages when developer tools are on at build time (<code>next.config.ts → pageExtensions</code>).</li>
-          <li><strong className="text-ink">Runtime gate:</strong> every dev route checks <code>devToolsEnabled()</code> and answers 404 otherwise. It is never true on the production deployment or on heramb.study, even if <code>HERAMB_DEV_TOOLS</code> is set there.</li>
+          <li><strong className="text-ink">Runtime gate:</strong> every dev route checks <code>devToolsEnabled()</code> and answers 404 otherwise. It is never true on the production deployment or on herambstudy.com, even if <code>HERAMB_DEV_TOOLS</code> is set there.</li>
           <li><strong className="text-ink">Build check:</strong> <code>npm run build</code> runs <code>scripts/assert-no-devtools.mjs</code> and fails if a dev route appears in a production build.</li>
         </ol>
         <p className="mt-4 text-sm text-ink-muted">To use this console on a Vercel <em>preview</em> deployment, set <code>HERAMB_DEV_TOOLS=true</code> for the Preview environment only.</p>

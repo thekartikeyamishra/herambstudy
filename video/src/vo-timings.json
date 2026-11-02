@@ -1,0 +1,14 @@
+{
+  "voice": "af_heart",
+  "speed": 1.0,
+  "seconds": {
+    "hook": 4.92,
+    "problem": 3.752,
+    "aha": 8.446,
+    "report": 4.69,
+    "builder": 8.773,
+    "proof": 3.205,
+    "head": 2.304,
+    "cta": 6.547
+  }
+}

@@ -7,6 +7,8 @@ export const display = "Fraunces Variable";
 export const sans = "Inter Variable";
 loadFont({ family: display, url: staticFile("fonts/Fraunces-Variable-latin.woff2"), weight: "100 900", format: "woff2" });
 loadFont({ family: sans, url: staticFile("fonts/Inter-Variable-latin.woff2"), weight: "100 900", format: "woff2" });
+export const deva = "Noto Sans Devanagari Variable";
+loadFont({ family: deva, url: staticFile("fonts/NotoSansDevanagari-Variable.woff2"), weight: "100 900", format: "woff2" });
 
 export const colors = {
   night: "#0C1121",

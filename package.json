@@ -1,6 +1,6 @@
 {
   "name": "heramb-study",
-  "version": "0.10.1",
+  "version": "0.13.0",
   "private": true,
   "description": "Heramb.study — invite-only launch website. Progress, made visible.",
   "engines": {
@@ -25,15 +25,16 @@
     "smoke:prod": "node scripts/smoke-prod.mjs",
     "release:manifest": "node scripts/check-release-files.mjs --write",
     "clean:stale": "node scripts/check-release-files.mjs --fix",
-    "indexnow": "node scripts/indexnow.mjs"
+    "indexnow": "node scripts/indexnow.mjs",
+    "backup": "node scripts/backup-firestore.mjs"
   },
   "dependencies": {
     "firebase-admin": "14.5.0",
-    "next": "15.5.27",
+    "next": "15.5.28",
     "qrcode-generator": "2.0.4",
     "react": "19.1.9",
     "react-dom": "19.1.9",
-    "zod": "3.25.76"
+    "zod": "4.6.7"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.13.0",
@@ -51,7 +52,7 @@
     "autoprefixer": "10.6.1",
     "cross-env": "10.1.0",
     "eslint": "9.39.5",
-    "eslint-config-next": "15.5.27",
+    "eslint-config-next": "15.5.28",
     "firebase": "12.12.0",
     "jsdom": "26.1.0",
     "postcss": "8.5.29",
@@ -61,6 +62,9 @@
     "vitest": "5.0.4"
   },
   "overrides": {
-    "postcss": "8.5.29"
+    "postcss": "8.5.29",
+    "rimraf": {
+      "glob": "14.0.3"
+    }
   }
 }

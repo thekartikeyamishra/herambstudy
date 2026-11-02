@@ -10,7 +10,7 @@ runConfig:
 
 env:
   - variable: NEXT_PUBLIC_SITE_URL
-    value: https://heramb.study
+    value: https://herambstudy.com
     availability: [BUILD, RUNTIME]
   - variable: NEXT_PUBLIC_BRAND_NAME
     value: Heramb.study

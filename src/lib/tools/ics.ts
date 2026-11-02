@@ -31,7 +31,7 @@ export function revisionReminderIcs(opts: { testDate: string; testName: string; 
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
     "BEGIN:VEVENT",
-    `UID:${opts.uid}@heramb.study`,
+    `UID:${opts.uid}@herambstudy.com`,
     `DTSTAMP:${stamp(opts.now ?? new Date())}`,
     `DTSTART:${stamp(start)}`,
     `DTEND:${stamp(end)}`,

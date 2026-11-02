@@ -40,3 +40,6 @@ Thumbs.db
 !.vscode/extensions.json
 !.vscode/settings.json
 npm-debug.log*
+
+# Firestore backups created by scripts/backup-firestore.mjs (contain personal data)
+backups/

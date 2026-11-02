@@ -24,6 +24,8 @@ const PUBLIC_PAGES = [
   "/invite",
   "/pilot",
   "/founding",
+  "/ai-assistants",
+  "/test-builder",
   "/about",
   "/contact",
   "/trust",
@@ -710,5 +712,106 @@ test.describe("v0.9 batch results", () => {
     await page.goto("/resources/class-test-analyser");
     await page.getByRole("button", { name: "हिंदी" }).click();
     await expect(page.getByRole("button", { name: "कक्षा का विश्लेषण करें" })).toBeVisible();
+  });
+});
+
+test.describe("v0.12 test builder", () => {
+  test("sample paper → online test → response code → chapter analysis", async ({ page, context }) => {
+    await page.goto("/test-builder");
+    await page.getByRole("button", { name: "Make a sample paper" }).first().click();
+    await expect(page.getByTestId("paper-summary")).toContainText("8 questions");
+    const preview = page.getByTestId("online-links").getByRole("link", { name: /Preview/ }).nth(1);
+    await expect(preview).toBeVisible({ timeout: 20_000 });
+    const href = await preview.getAttribute("href");
+
+    const student = await context.newPage();
+    await student.goto(href!);
+    await student.getByLabel(/Your roll number/).fill("R07");
+    await student.getByRole("button", { name: "Start test" }).click();
+    await expect(student.getByTestId("test-running")).toBeVisible();
+    await student.locator('input[type="radio"]').first().check();
+    student.once("dialog", (d) => void d.accept());
+    await student.getByRole("button", { name: "Submit test" }).click();
+    const code = (await student.getByTestId("response-code").textContent())!.trim();
+    expect(code).toMatch(/^HR1\./);
+
+    await page.getByRole("tab", { name: /Results/ }).click();
+    await page.getByLabel("Response codes").fill(`Sir my code ${code}`);
+    await page.getByRole("button", { name: "Analyse online answers" }).click();
+    await expect(page.getByTestId("item-analysis")).toContainText("Laws of motion");
+    await page.getByRole("button", { name: /Open the chapter-wise plan/ }).click();
+    await expect(page).toHaveURL(/class-test-analyser/);
+    await expect(page.getByTestId("class-results")).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByTestId("teaching-plan")).toContainText("Laws of motion");
+  });
+
+  test("own questions are parsed into the bank and a paper is made", async ({ page }) => {
+    await page.goto("/test-builder");
+    await page.getByLabel("Default chapter").fill("Optics");
+    await page.getByLabel("Questions", { exact: true }).fill("1. Light travels fastest in\n(a) glass (b) water (c) vacuum (d) diamond\nAns: c\n\n2. Unit of power of a lens\n(a) dioptre (b) metre (c) watt (d) joule\nAns: a\nDifficulty: easy");
+    await page.getByRole("button", { name: "Add to bank" }).click();
+    await expect(page.getByTestId("bank-stats")).toContainText("Optics");
+    await page.getByRole("tab", { name: /Make a paper/ }).click();
+    await page.getByRole("button", { name: /Make paper \(2 questions\)/ }).click();
+    await expect(page.getByTestId("paper-summary")).toContainText("2 questions");
+  });
+
+  test("a broken test link explains itself", async ({ page }) => {
+    await page.goto("/t#abc");
+    await expect(page.getByTestId("test-invalid")).toBeVisible();
+  });
+});
+
+test.describe("v0.13 batches, question check and doubt log", () => {
+  test("seating plan, batch-labelled online link, and batch filter in results", async ({ page, context }) => {
+    await page.goto("/test-builder");
+    await page.getByRole("button", { name: "Make a sample paper" }).first().click();
+    await page.getByLabel("Batch list").fill("11 JEE A, 10\n11 JEE B, 8, B");
+    await expect(page.getByTestId("seating-table")).toContainText("11 JEE B");
+    await expect(page.getByTestId("seating-table")).toContainText("Total to print");
+    await page.getByLabel(/Batch for these links/).fill("11 JEE B");
+    const preview = page.getByTestId("online-links").getByRole("link", { name: /Preview/ }).first();
+    await expect(preview).toBeVisible({ timeout: 20_000 });
+    await page.waitForTimeout(600); // links regenerate after typing
+    const href = await preview.getAttribute("href");
+
+    const student = await context.newPage();
+    await student.goto(href!);
+    await expect(student.getByText(/11 JEE B · Set A/)).toBeVisible();
+    await student.getByLabel(/Your roll number/).fill("B03");
+    await student.getByRole("button", { name: "Start test" }).click();
+    student.once("dialog", (d) => void d.accept());
+    await student.getByRole("button", { name: "Submit test" }).click();
+    const code = (await student.getByTestId("response-code").textContent())!.trim();
+
+    await page.getByRole("tab", { name: /Results/ }).click();
+    await page.getByLabel("Response codes").fill(code);
+    await page.getByRole("button", { name: "Analyse online answers" }).click();
+    await expect(page.getByTestId("results-review")).toContainText("1 student");
+    await expect(page.getByLabel("Batch", { exact: true })).toContainText("11 JEE B");
+  });
+
+  test("paper step fills a blueprint from chapters and a difficulty mix", async ({ page }) => {
+    await page.goto("/test-builder");
+    await page.getByRole("button", { name: "Make a sample paper" }).first().click();
+    await page.getByRole("tab", { name: /Make a paper/ }).click();
+    await page.getByLabel("Exam pattern (marking)").selectOption("board");
+    await expect(page.getByLabel("Minus for wrong")).toHaveValue("0");
+    await page.getByLabel("Questions", { exact: true }).fill("6");
+    await page.getByRole("button", { name: "Fill the blueprint" }).click();
+    await expect(page.getByTestId("auto-blueprint")).toContainText("Blueprint filled: 6 questions");
+    await page.getByRole("button", { name: /Make paper \(6 questions\)/ }).click();
+    await expect(page.getByTestId("paper-summary")).toContainText("6 questions");
+  });
+
+  test("doubt log shows a heatmap and links to a retest", async ({ page }) => {
+    await page.goto("/doubts");
+    await page.getByRole("button", { name: "See an example with fictional data" }).click();
+    await expect(page.getByTestId("doubt-heatmap")).toContainText("Optics");
+    await expect(page.getByTestId("doubt-heatmap")).toContainText("rising");
+    await page.getByRole("button", { name: "+1 Optics" }).click();
+    await expect(page.getByText(/Logged: Optics/)).toBeVisible();
+    await page.getByRole("link", { name: /Make a short test on these chapters/ }).click();
+    await expect(page).toHaveURL(/\/test-builder/);
   });
 });

@@ -1,5 +1,78 @@
 # Changelog
 
+## 0.13.0 — 2 November 2026
+
+Focus: make the test builder the tool an institute runs every test day on (patterns, batches, seating, checking the paper itself), add the daily habit (doubt log), and give the owner a database backup that needs no vendor feature.
+
+### Added
+- **Test builder, paper step:**
+  - **Exam pattern presets** (marking only): JEE Main/NEET style +4/−1, CUET style +5/−1, CA Foundation MCQ style +1/−0.25, school/board +1/0. They set the marks and a suggested time; the page tells teachers to check the current official notice for question counts.
+  - **Quick blueprint:** pick chapters, a total and a difficulty mix (balanced, practice, exam level, challenge). Heramb spreads questions evenly, fills a missing level from the nearest one, and states any shortfall instead of padding.
+- **Test builder, conduct step:**
+  - **Batches and seating:** one line per batch ("11 JEE A, 42"). Every roll number gets a set so neighbours never share one; copies per set per batch (5% spare); a printable seating chart per batch.
+  - **Batch on online links:** the batch travels inside the link and the student's code, so the same roll number in two batches stays two students.
+- **Test builder, results step: question check before the plan.** For every question: % correct, the key, and the most-picked wrong option. Flags: "Check the answer key" (most students agree on another option), too hard, too easy, often skipped. Includes a batch filter, a CSV download, and **re-tagging question difficulty from real results** (10+ students), so future blueprints get more accurate with every test.
+- **Doubt log (`/doubts`):** one-tap logging of students' doubts by chapter during class. Shows a chapter × week heatmap with rising/easing trends, the top chapters of the last 14 days, and **"Make a short test on these chapters"** into the test builder. Includes a fictional example, CSV/backup export and import. Stays in the browser.
+- **`npm run backup`** (`scripts/backup-firestore.mjs`): exports every Firestore collection and sub-collection to JSON-lines files you own; `--restore <folder> --yes` writes them back. This gives disaster recovery and an exit path to another database. `backups/` is git-ignored.
+- Usage count `doubts_logged` (teacher; at most once per day per device).
+- **Launch film v2** (`video/`, compositions `LaunchV2`, `LaunchV2Vertical` and `LaunchV2Square`). It runs 57 s and walks through the hook, the problem, paste → plan, reports in English/Hindi, the test builder (sets, seating, online, answer-key alarm), proof, the head's view, and the call to action. Sound and production:
+  - an offline synthetic voiceover (Kokoro-82M, Apache-2.0), disclosed on the end card;
+  - music and sound effects synthesised in code;
+  - burned-in captions plus `captions-v2.srt`;
+  - a QR code to `/founding?source=video`.
+
+### Changed
+- Results from the test builder now open the question check first; "Open the chapter-wise plan" continues to the analyser (for one batch or all).
+- Privacy policy: doubt log row.
+
+### Security
+- New moderate advisories in `glob`/`minimatch` (reached only through `rimraf`, inside firebase-admin's Google client libraries, and never loaded at runtime) are closed with a scoped override, `overrides.rimraf.glob = 14.0.3`. `npm audit --omit=dev` reports 0 vulnerabilities again.
+
+## 0.12.0 — 29 October 2026
+
+Focus: make the tests themselves on Heramb, so every analysis needs zero setup, and close two security advisories.
+
+### Added
+- **Test builder (`/test-builder`).**
+  - Question bank from pasted questions in any common format, tagged by subject, chapter and difficulty.
+  - Blueprint picking by chapter × difficulty × count, avoiding questions used in recent papers.
+  - **Sets A–D** with shuffled questions and options.
+  - Print: paper, bubble answer sheet, and teacher key page with chapter map.
+  - **Online tests** (`/t#…`): the link holds questions only; timer; answers survive reloads; auto-submit; a WhatsApp response code that is checked against edits and the wrong paper.
+  - **Results:** paste codes or an OMR/Excel table with mixed sets; results open in the chapter-wise analyser automatically.
+  - "Make a sample paper" gets you there in about 10 seconds.
+- Analyser: **"Make a retest on these weak chapters"** opens the builder pre-filled; it also accepts results handed over from the builder.
+- Usage counts `paper_created` (teacher) and `online_test_taken` (student, once per test per device).
+- Docs:
+  - `docs/TEST-BUILDER.md`: freemium split, limits, one-person support playbook, three next features.
+  - `docs/RESILIENCE.md`: every dependency, its failure mode and fallback, and abuse controls.
+
+### Security
+- **next 15.5.27 → 15.5.28** (critical RCE / DoS advisories) and **zod 3 → 4.6.7** (memory-exhaustion advisory). `npm audit --omit=dev`: 0 vulnerabilities. Schemas migrated to zod 4: optional fields stay optional; custom messages kept.
+
+### Changed
+- Privacy policy covers the test builder and online tests (nothing is sent to Heramb except counts).
+
+## 0.11.0 — 27 October 2026
+
+Focus: meet teachers inside the AI chat they already use (ChatGPT, Grok, Claude).
+
+### Added
+- **Remote MCP server** at `POST /api/mcp` (Streamable HTTP, stateless, JSON responses, no auth) with three read-only tools: `analyse_class_test`, `convert_question_marks_to_chapters` (marks, right/wrong, or OMR options with an answer key), and `compare_follow_up_test`. Works as a ChatGPT app (Apps SDK / app directory), a Grok custom connector and a Claude custom connector.
+- **REST + OpenAPI** for custom GPT Actions: `GET /openapi.json`, `POST /api/v1/tools/{tool}`.
+- **`/ai-assistants` page**: what to ask, the connector address, and how to connect in Claude, Grok and ChatGPT. Linked from the footer and in the sitemap.
+- `docs/AI-ASSISTANTS.md`: verification commands, step-by-step ChatGPT app and GPT Store submission, the Grok situation, and a reviewer test table.
+- Privacy policy: what happens to marks sent from an AI assistant (processed in memory, not stored).
+
+## 0.10.2 — 25 October 2026
+
+Focus: the live domain is **herambstudy.com**.
+
+### Fixed
+- `npm run indexnow` said "isn't live yet" for any reason. It now reports the real cause: a redirect (e.g. `herambstudy.vercel.app` or `www.` → the primary domain, with the exact command to use instead), a 404 (latest release not deployed on that domain), or a sitemap listing a different domain (with the `NEXT_PUBLIC_SITE_URL` fix).
+- Developer-tools production lock now recognises `herambstudy.com` and `www.herambstudy.com` (as well as heramb.study), in both the runtime gate and the post-build check.
+- Launch readiness "Own domain" check works for any custom domain (fails only for `*.vercel.app` / localhost).
+
 ## 0.10.1 — 25 October 2026
 
 Focus: search engines (Google, Bing) can index the right site, and every page passes an SEO audit.

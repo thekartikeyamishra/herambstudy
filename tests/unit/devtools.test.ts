@@ -11,6 +11,8 @@ const cases: Array<[string, Record<string, string | undefined>, boolean]> = [
   ["flag set on the production deployment", { NODE_ENV: "production", HERAMB_DEV_TOOLS: "true", VERCEL_ENV: "production" }, false],
   ["flag set with the production domain", { NODE_ENV: "production", HERAMB_DEV_TOOLS: "true", NEXT_PUBLIC_SITE_URL: "https://heramb.study/" }, false],
   ["flag set with the www domain (any case)", { NODE_ENV: "production", HERAMB_DEV_TOOLS: "true", NEXT_PUBLIC_SITE_URL: "https://WWW.heramb.study" }, false],
+  ["flag set with herambstudy.com", { NODE_ENV: "production", HERAMB_DEV_TOOLS: "true", NEXT_PUBLIC_SITE_URL: "https://herambstudy.com" }, false],
+  ["flag set with www.herambstudy.com", { NODE_ENV: "production", HERAMB_DEV_TOOLS: "true", NEXT_PUBLIC_SITE_URL: "https://www.herambstudy.com/" }, false],
   ["flag must be exactly true", { NODE_ENV: "production", HERAMB_DEV_TOOLS: "1" }, false],
 ];
 
